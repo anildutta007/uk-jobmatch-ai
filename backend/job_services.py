@@ -12,9 +12,12 @@ Integrates with:
 import os
 import re
 import logging
-from typing import List, Dict, Any, Optional
 import httpx
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +199,9 @@ async def fetch_reed_live_jobs(query: str = "IT Service Operations", location: s
     """
     Fetches live, specific job listings directly from Reed.co.uk with exact individual post URLs.
     """
+    if not BeautifulSoup:
+        return []
+
     clean_q = re.sub(r"[^\w\s-]", "", query).strip().replace(" ", "-")
     clean_loc = re.sub(r"[^\w\s-]", "", location).strip().replace(" ", "-")
     url = f"https://www.reed.co.uk/jobs/{clean_q}-jobs-in-{clean_loc}"
