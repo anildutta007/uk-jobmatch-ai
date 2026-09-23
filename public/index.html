@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UK JobMatch AI | Gemini-Powered Job Scoring Agent</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link rel="stylesheet" href="/styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- Background decorative glows -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/3 -right-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="relative z-10 flex flex-col min-h-screen">
+    
+    <!-- Navbar -->
+    <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+      <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-lg text-white tracking-tight">UK JobMatch</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">AI Agent</span>
+            </div>
+            <p class="text-xs text-slate-400">Gemini LLM Job Matcher & Scorer</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- API Key Status Pill -->
+          <div id="keyStatusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-800/90 border border-slate-700">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="keyIndicator"></span>
+            <span id="keyStatusText" class="text-slate-300">Checking .env...</span>
+          </div>
+
+          <!-- Settings Button -->
+          <button id="openSettingsBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+            <span>Settings</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+      
+      <!-- Hero Header -->
+      <section class="text-center max-w-3xl mx-auto pt-4 pb-2 space-y-3">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <i data-lucide="target" class="w-3.5 h-3.5"></i>
+          <span>Targeting UK Market & Remote Opportunities</span>
+        </div>
+        <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+          Upload CV. Match UK Jobs. <br>
+          <span class="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
+            Scored out of 10 by Gemini AI.
+          </span>
+        </h1>
+        <p class="text-sm sm:text-base text-slate-400">
+          Upload your CV to extract your skills, scan UK job boards, and let the Google Gemini LLM agent rank every opportunity with a match score out of 10 and tailored interview advice.
+        </p>
+      </section>
+
+      <!-- Upload & Configuration Card -->
+      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-sm shadow-xl">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          <!-- Dropzone Area (Col 7) -->
+          <div class="lg:col-span-7 space-y-4">
+            <label class="block text-sm font-semibold text-slate-300 flex items-center justify-between">
+              <span>Upload Your CV</span>
+              <span class="text-xs font-normal text-slate-500">Supports PDF, DOCX, TXT</span>
+            </label>
+
+            <!-- Drag and Drop Box -->
+            <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/80 rounded-xl p-8 text-center transition-all bg-slate-950/40 cursor-pointer group flex flex-col items-center justify-center min-h-[220px]">
+              <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.doc,.txt">
+              
+              <div id="dropEmptyState" class="space-y-3">
+                <div class="w-14 h-14 mx-auto rounded-full bg-slate-800/80 group-hover:bg-indigo-600/20 flex items-center justify-center transition border border-slate-700 group-hover:border-indigo-500/40 text-slate-400 group-hover:text-indigo-400">
+                  <i data-lucide="upload-cloud" class="w-7 h-7"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">
+                    <span class="text-indigo-400 group-hover:underline">Click to upload</span> or drag and drop
+                  </p>
+                  <p class="text-xs text-slate-500 mt-1">CV in PDF, Word (.docx), or plain text</p>
+                </div>
+              </div>
+
+              <!-- Selected File Preview -->
+              <div id="fileSelectedState" class="hidden flex items-center gap-3 bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-left w-full max-w-md">
+                <div class="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center flex-shrink-0 border border-indigo-500/20">
+                  <i data-lucide="file-text" class="w-5 h-5"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p id="fileNameDisplay" class="text-sm font-semibold text-slate-200 truncate">cv_filename.pdf</p>
+                  <p id="fileSizeDisplay" class="text-xs text-slate-400">120 KB</p>
+                </div>
+                <button type="button" id="removeFileBtn" class="p-1.5 hover:bg-slate-700 text-slate-400 hover:text-rose-400 rounded-lg transition" title="Remove file">
+                  <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Action: Try Sample CV -->
+            <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
+              <span>Don't have your CV on hand?</span>
+              <button type="button" id="loadSampleBtn" class="inline-flex items-center gap-1.5 font-medium text-indigo-400 hover:text-indigo-300 hover:underline">
+                <i data-lucide="file-check" class="w-3.5 h-3.5"></i>
+                <span>Load Sample Senior Full-Stack CV</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Filters & Submit Action (Col 5) -->
+          <div class="lg:col-span-5 bg-slate-950/60 border border-slate-800/80 rounded-xl p-6 space-y-5">
+            <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <i data-lucide="sliders-horizontal" class="w-4 h-4 text-indigo-400"></i>
+              <span>Match Preferences</span>
+            </h3>
+
+            <!-- Location Selector -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-medium text-slate-300">Target UK Location</label>
+              <select id="locationSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                <option value="United Kingdom">United Kingdom (All Regions & Remote)</option>
+                <option value="London">London & Greater London</option>
+                <option value="Manchester">Manchester & North West</option>
+                <option value="Birmingham">Birmingham & West Midlands</option>
+                <option value="Bristol">Bristol & South West</option>
+                <option value="Cambridge">Cambridge & East</option>
+                <option value="Edinburgh">Edinburgh & Scotland</option>
+                <option value="Remote">Remote Only (UK Eligible)</option>
+              </select>
+            </div>
+
+            <!-- Min Score Filter -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs font-medium text-slate-300">
+                <span>Minimum Match Score:</span>
+                <span id="scoreThresholdValue" class="text-indigo-400 font-bold">5.0 / 10</span>
+              </div>
+              <input type="range" id="scoreThreshold" min="0" max="9" step="0.5" value="5.0" class="w-full accent-indigo-500 cursor-pointer">
+              <p class="text-[11px] text-slate-500">Only jobs scoring above this threshold will be shown.</p>
+            </div>
+
+            <!-- Submit Button -->
+            <button id="findJobsBtn" class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-600/30 transition transform active:scale-[0.99] flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span id="btnLabel">Find & Score Matching Jobs</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Progress Section (Hidden initially) -->
+      <section id="progressSection" class="hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-sm shadow-xl space-y-6 animate-fade-in">
+        <div class="text-center space-y-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+            <span>Gemini Agent Processing</span>
+          </div>
+          <h2 id="progressHeading" class="text-xl font-bold text-white">Analyzing Your CV...</h2>
+          <p id="progressDetail" class="text-xs text-slate-400">Extracting technical skills, years of experience, and role specializations.</p>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 max-w-4xl mx-auto pt-2">
+          <!-- Step 1 -->
+          <div id="step1" class="step-card bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-center space-y-1 transition-all">
+            <div class="step-icon w-8 h-8 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs font-bold">1</div>
+            <p class="text-xs font-semibold text-slate-300">Parse CV Document</p>
+          </div>
+          <!-- Step 2 -->
+          <div id="step2" class="step-card bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-center space-y-1 transition-all">
+            <div class="step-icon w-8 h-8 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs font-bold">2</div>
+            <p class="text-xs font-semibold text-slate-300">Gemini Profile Extraction</p>
+          </div>
+          <!-- Step 3 -->
+          <div id="step3" class="step-card bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-center space-y-1 transition-all">
+            <div class="step-icon w-8 h-8 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs font-bold">3</div>
+            <p class="text-xs font-semibold text-slate-300">Scan UK Job Boards</p>
+          </div>
+          <!-- Step 4 -->
+          <div id="step4" class="step-card bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-center space-y-1 transition-all">
+            <div class="step-icon w-8 h-8 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs font-bold">4</div>
+            <p class="text-xs font-semibold text-slate-300">Score Out of 10</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Extracted Profile Banner (Hidden initially) -->
+      <section id="profileSection" class="hidden bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/40 border border-indigo-500/20 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-lg">
+              <i data-lucide="user-check" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 id="profileName" class="text-lg font-bold text-white">Alex Turner</h3>
+                <span id="profileAiBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Gemini Extracted</span>
+              </div>
+              <p id="profileTitle" class="text-xs text-indigo-300 font-medium">Senior Full-Stack Developer • 6+ years experience</p>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-400 sm:text-right">
+            <span>Querying market for:</span>
+            <div id="profileKeywords" class="flex flex-wrap sm:justify-end gap-1.5 mt-1">
+              <!-- Keyword tags -->
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Detected Core Skills</p>
+          <div id="profileSkills" class="flex flex-wrap gap-2">
+            <!-- Skill pills -->
+          </div>
+        </div>
+
+        <p id="profileSummary" class="text-xs text-slate-400 italic bg-slate-950/40 p-3 rounded-lg border border-slate-800/60">
+          "Experienced full-stack engineer specializing in scalable Python web services and modern React user interfaces."
+        </p>
+      </section>
+
+      <!-- Results Header & Cards -->
+      <section id="resultsSection" class="hidden space-y-4">
+        <!-- Results Top Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 px-5 py-3 rounded-xl">
+          <div class="flex items-center gap-2">
+            <span class="text-base font-bold text-white">Matching UK Jobs Found</span>
+            <span id="resultCountBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-600 text-white">8 Jobs</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span>Sorted by: <strong class="text-slate-200">Gemini Match Score (Highest First)</strong></span>
+          </div>
+        </div>
+
+        <!-- Job Cards Container -->
+        <div id="jobsList" class="space-y-4">
+          <!-- Dynamic Job Cards inserted via JavaScript -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-900/40 py-6 text-center text-xs text-slate-500">
+      <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <p>Built for the UK Job Market • Powered by Google Gemini AI & Public Job Aggregators</p>
+        <p>Zero Subscription Fees • Open Source Architecture</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-scale-up">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="key" class="w-5 h-5 text-indigo-400"></i>
+          <h3 class="text-base font-bold text-white">Gemini API Configuration</h3>
+        </div>
+        <button id="closeSettingsBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300">
+        <p>
+          The application uses <strong class="text-white">Google Gemini 2.5 Flash</strong> to extract CV competencies and compare candidate profiles against live job descriptions.
+        </p>
+
+        <!-- Current Status -->
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+          <span>Active .env Key Status:</span>
+          <span id="modalKeyStatus" class="font-bold text-amber-400">Not configured</span>
+        </div>
+
+        <!-- Input Form -->
+        <div class="space-y-1.5">
+          <label class="block font-semibold text-slate-200">Update Gemini API Key</label>
+          <input type="password" id="modalKeyInput" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 font-mono">
+          <p class="text-[11px] text-slate-400">Saving will update your local <code class="text-indigo-300">.env</code> file directly.</p>
+        </div>
+
+        <div class="bg-indigo-950/40 border border-indigo-500/20 rounded-xl p-3 text-[11px] space-y-1 text-indigo-200">
+          <p class="font-semibold text-indigo-300">Need a free Gemini key?</p>
+          <p>You can get a free API key with generous usage limits from <a href="https://aistudio.google.com/" target="_blank" class="underline text-white font-medium hover:text-indigo-300">Google AI Studio</a> in 30 seconds.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button type="button" id="cancelSettingsBtn" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">Cancel</button>
+        <button type="button" id="saveKeyBtn" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition shadow-md shadow-indigo-600/30">Save to .env</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

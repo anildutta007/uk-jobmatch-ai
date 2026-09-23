@@ -1,0 +1,39 @@
+Alex Turner
+London, United Kingdom | alex.turner.dev@example.co.uk | +44 7700 900123
+LinkedIn: linkedin.com/in/alex-turner-tech | GitHub: github.com/alexturner-dev
+
+PROFESSIONAL SUMMARY
+Senior Full-Stack Software Engineer with 6+ years of commercial experience architecting, building, and deploying scalable web applications and cloud microservices in fast-paced UK tech environments. Passionate about modern JavaScript/TypeScript, React, Python (FastAPI/Django), REST/GraphQL APIs, and AWS cloud infrastructure. Proven track record of reducing API latency by 45% and leading cross-functional engineering teams.
+
+CORE TECHNICAL SKILLS
+- Languages: Python, TypeScript, JavaScript (ES6+), SQL, HTML5, CSS3
+- Frontend: React, Next.js, Redux Toolkit, Tailwind CSS, Vue.js
+- Backend: FastAPI, Django, Flask, Node.js, Express.js, RESTful APIs, GraphQL
+- Databases: PostgreSQL, MongoDB, Redis, MySQL
+- Cloud & DevOps: AWS (EC2, S3, Lambda, ECS), Docker, Kubernetes, CI/CD (GitHub Actions), Terraform
+- Methodologies: Agile/Scrum, Test-Driven Development (TDD), Jest, PyTest, Microservices Architecture
+
+WORK EXPERIENCE
+
+Senior Full-Stack Developer | FinTech Solutions Ltd (London, UK)
+March 2022 - Present
+- Spearheaded the design and delivery of a real-time UK payment processing dashboard using React, TypeScript, and FastAPI, handling over 2M transactions daily.
+- Optimized database indexing and Redis caching, resulting in a 45% reduction in API response times.
+- Managed AWS cloud infrastructure using Terraform and automated deployments via GitHub Actions CI/CD pipelines.
+- Mentored 4 junior and mid-level developers, conducting code reviews and championing TDD practices with 90%+ test coverage.
+
+Software Engineer | CloudScale Systems (Manchester, UK - Remote)
+July 2019 - February 2022
+- Developed scalable customer-facing SaaS portals using React, Node.js, and PostgreSQL.
+- Built microservices in Python (Flask/FastAPI) integrated with third-party CRM and banking APIs.
+- Containerized legacy applications using Docker and migrated workloads to AWS ECS.
+- Collaborated closely with Product Managers and UI/UX designers to implement pixel-perfect user experiences.
+
+Junior Web Developer | Digital Craft Agency (London, UK)
+September 2018 - June 2019
+- Developed responsive client websites using JavaScript, Python, HTML5, and Sass.
+- Integrated payment gateways (Stripe, PayPal) and bespoke CMS solutions.
+
+EDUCATION & CERTIFICATIONS
+- B.Sc. (Hons) in Computer Science (First Class) - University of Manchester (2015 - 2018)
+- AWS Certified Solutions Architect - Associate (2023)
