@@ -1,10 +1,11 @@
 """
 Gemini LLM Agent Module
-Uses Google Gemini (gemini-2.5-flash) to:
-1. Parse and extract key skills, titles, and competencies from candidate CVs.
+Uses Google Gemini (gemini-2.0-flash / gemini-1.5-flash) to:
+1. Parse and extract all professional competencies, tools, ITSM practices, cloud platforms,
+   data analysis skills, and leadership capabilities from candidate CVs.
 2. Evaluate and score candidate CVs against job postings out of 10.
 3. Identify matching skills, missing skills, rationale, and application tips.
-Includes graceful heuristic fallback when no API key is present.
+Includes comprehensive multi-domain heuristic fallback.
 """
 
 import os
@@ -17,7 +18,8 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+PRIMARY_MODEL = "gemini-2.0-flash"
+FALLBACK_MODEL = "gemini-1.5-flash"
 
 
 def get_gemini_client(api_key: Optional[str] = None) -> Optional[genai.Client]:
@@ -32,94 +34,200 @@ def get_gemini_client(api_key: Optional[str] = None) -> Optional[genai.Client]:
         return None
 
 
+# Comprehensive multi-domain catalog for parsing any CV (ITSM, Cloud, Data, Dev, Leadership)
+COMPREHENSIVE_SKILL_CATALOG = [
+    # ITSM & Service Management
+    "ServiceNow", "ITIL", "ITIL v3", "ITIL v4", "Incident Management", "Major Incident Management",
+    "Problem Management", "Change Management", "Change Advisory Board", "Release Management",
+    "Service Transition", "Service Operations", "CMDB", "SLA Management", "OLA Management",
+    "Service Catalogue", "Continual Service Improvement", "BMC Remedy", "Jira Service Management",
+    "Service Desk", "Root Cause Analysis",
+
+    # Cloud, Infrastructure & IoT
+    "Microsoft Azure", "Azure", "Azure IoT", "Azure IoT Suite", "AWS", "Google Cloud", "GCP",
+    "Cloud Operations", "Virtual Machines", "Storage", "Networking", "Linux", "Windows Server",
+    "Docker", "Kubernetes", "Terraform", "CI/CD", "DevOps",
+
+    # Observability & Monitoring
+    "Splunk", "Datadog", "Grafana", "Azure Monitor", "Application Insights",
+    "Dynatrace", "New Relic", "Prometheus", "ELK Stack",
+
+    # Data, BI & Reporting
+    "SQL", "Power BI", "Qlik Sense", "QlikView", "Tableau", "Excel", "Advanced Excel",
+    "KPI Dashboards", "Data Reporting", "Data Analysis", "Data Engineering",
+    "Generative AI", "Python", "R", "Snowflake", "dbt", "Airflow",
+
+    # Software & Development
+    "TypeScript", "JavaScript", "React", "Next.js", "Node.js", "FastAPI",
+    "Django", "Flask", "PostgreSQL", "MongoDB", "Redis", "REST APIs", "GraphQL",
+
+    # Delivery & Methodologies
+    "Agile", "Scrum", "Kanban", "Waterfall", "TDD", "Microservices",
+
+    # Leadership & Operations
+    "Vendor Management", "Stakeholder Management", "Multi-vendor Delivery", "Budget Management",
+    "Team Leadership", "Cross-Functional Leadership", "Risk Management", "Cost Optimization"
+]
+
+
 def extract_cv_profile_fallback(cv_text: str) -> Dict[str, Any]:
-    """Heuristic fallback parser when Gemini API key is not configured."""
-    text_lower = cv_text.lower()
-    
-    # Common tech skills dictionary
-    tech_catalog = [
-        "python", "javascript", "typescript", "react", "next.js", "vue", "angular",
-        "node.js", "fastapi", "django", "flask", "docker", "kubernetes", "aws",
-        "gcp", "azure", "sql", "postgresql", "mongodb", "redis", "graphql", "rest",
-        "ci/cd", "terraform", "linux", "git", "c++", "c#", ".net", "java", "spring"
-    ]
-    detected_skills = [skill.title() for skill in tech_catalog if re.search(r"\b" + re.escape(skill) + r"\b", text_lower)]
-    
-    # Extract candidate name (usually on the first non-empty line)
+    """
+    Intelligent multi-domain heuristic fallback parser.
+    Extracts ITSM, Cloud, Observability, Data Analytics, and Software skills.
+    """
     lines = [l.strip() for l in cv_text.splitlines() if l.strip()]
     candidate_name = lines[0] if lines else "Candidate"
     
-    # Role heuristic
-    role = "Software Engineer"
-    for title in ["Senior Full-Stack Developer", "Full-Stack Engineer", "Backend Developer", "Frontend Developer", "DevOps Engineer", "Data Engineer"]:
-        if title.lower() in text_lower:
-            role = title
+    # Clean candidate name (strip trailing titles/contacts if on line 1)
+    if "|" in candidate_name:
+        candidate_name = candidate_name.split("|")[0].strip()
+
+    # Detect Role Title from lines 2-5 or from text
+    target_title = ""
+    for line in lines[1:6]:
+        line_clean = line.strip()
+        # Common title indicators
+        if any(w in line_clean.lower() for w in [
+            "leader", "manager", "director", "engineer", "specialist", "architect",
+            "consultant", "analyst", "developer", "administrator", "head of"
+        ]) and len(line_clean) < 70 and not line_clean.startswith("+") and "@" not in line_clean:
+            target_title = line_clean.title()
             break
+
+    if not target_title:
+        # Heuristic keywords in entire text
+        for candidate_role in [
+            "Senior IT Service Management & Operations Leader",
+            "IT Service Operational Manager",
+            "IT Delivery Manager",
+            "ITSM Manager",
+            "Major Incident Manager",
+            "Cloud Operations Lead",
+            "Senior Full-Stack Developer",
+            "DevOps Engineer",
+            "Data Engineer",
+            "Solutions Architect"
+        ]:
+            if candidate_role.lower() in cv_text.lower():
+                target_title = candidate_role
+                break
+
+    if not target_title:
+        target_title = "Senior IT & Operations Professional"
+
+    # Extract years of experience (e.g., "29 years", "6+ years")
+    years_exp = "10+ years"
+    exp_match = re.search(r"(\d+)\+?\s*years(?:\s+of\s+experience)?", cv_text, re.IGNORECASE)
+    if exp_match:
+        years_exp = f"{exp_match.group(1)}+ years"
+
+    # Extract detected skills from comprehensive catalog
+    detected_skills = []
+    text_lower = cv_text.lower()
+    for skill in COMPREHENSIVE_SKILL_CATALOG:
+        pattern = r"\b" + re.escape(skill.lower()) + r"\b"
+        if re.search(pattern, text_lower):
+            if skill not in detected_skills:
+                detected_skills.append(skill)
+
+    # Search keywords for job boards
+    search_keywords = [target_title]
+    if "ServiceNow" in detected_skills or "ITIL" in detected_skills:
+        search_keywords.append("IT Service Management")
+        search_keywords.append("ServiceNow")
+    if "Azure" in detected_skills or "Microsoft Azure" in detected_skills:
+        search_keywords.append("Azure")
+    if "Incident Management" in detected_skills or "Major Incident Management" in detected_skills:
+        search_keywords.append("Incident Management")
+    if "Power BI" in detected_skills or "SQL" in detected_skills:
+        search_keywords.append("Data Analysis")
+
+    # Keep unique search keywords
+    seen_kw = set()
+    cleaned_keywords = []
+    for kw in search_keywords:
+        if kw.lower() not in seen_kw:
+            seen_kw.add(kw.lower())
+            cleaned_keywords.append(kw)
 
     return {
         "candidate_name": candidate_name[:50],
-        "target_title": role,
-        "years_experience": "5+ years",
-        "core_technical_skills": detected_skills[:12] if detected_skills else ["Python", "JavaScript", "SQL", "Cloud"],
-        "soft_skills": ["Problem Solving", "Team Leadership", "Agile Communication"],
-        "search_keywords": [role, detected_skills[0] if detected_skills else "Python", "React", "AWS"],
-        "summary": "Experienced professional with background in software development and modern technologies.",
+        "target_title": target_title,
+        "years_experience": years_exp,
+        "core_technical_skills": detected_skills[:20] if detected_skills else ["IT Operations", "Azure", "ITIL", "SQL"],
+        "soft_skills": [
+            "Major Incident Leadership", "Vendor & Stakeholder Management",
+            "Continual Service Improvement", "Cross-Functional Collaboration"
+        ],
+        "search_keywords": cleaned_keywords[:5],
+        "summary": f"{target_title} with {years_exp} experience delivering high-availability IT services, cloud operations, and enterprise governance.",
         "ai_powered": False
     }
 
 
 def extract_cv_profile(cv_text: str, api_key: Optional[str] = None) -> Dict[str, Any]:
     """
-    Uses Gemini LLM Agent to extract candidate profile, roles, and skills.
+    Uses Gemini LLM Agent to extract candidate profile, roles, and all skills.
+    Tries gemini-2.0-flash, then gemini-1.5-flash, then comprehensive heuristic fallback.
     """
     client = get_gemini_client(api_key)
     if not client:
-        logger.info("No Gemini API key detected; using heuristic fallback for profile extraction.")
+        logger.info("No Gemini API key detected; using multi-domain heuristic fallback.")
         return extract_cv_profile_fallback(cv_text)
 
-    prompt = f"""You are an expert HR and recruitment AI agent analyzing a candidate's CV.
-Extract key professional attributes into a valid JSON object.
+    prompt = f"""You are an elite Talent Acquisition & Executive Recruitment AI analyzing an executive or technical CV.
+Perform a thorough, deep extraction of this candidate's profile, extracting ALL technical, operational, managerial, and domain skills.
+
+IMPORTANT INSTRUCTIONS:
+- Analyze ALL domains present: IT Service Management (ITSM, ITIL, ServiceNow, Incident, Problem, Change, CAB, CMDB), Cloud & IoT (Azure, AWS, IoT Suite), Observability (Splunk, Datadog, Grafana), Data & Analytics (SQL, Power BI, Qlik Sense, Excel), Delivery (Agile, Scrum), and Leadership (Vendor Management, Budgeting).
+- DO NOT restrict yourself to only software coding.
+- Extract at least 15-25 specific, granular skills found in the CV under "core_technical_skills".
+- Extract the exact primary executive/technical title under "target_title".
+- Extract actual years of experience (e.g. "29 years").
 
 Candidate CV Content:
 \"\"\"
-{cv_text[:4000]}
+{cv_text[:6000]}
 \"\"\"
 
-Return ONLY a JSON object with this exact structure:
+Return ONLY a valid JSON object with this exact structure:
 {{
-    "candidate_name": "Full name or Candidate",
-    "target_title": "Primary professional title (e.g. Senior Full-Stack Developer)",
-    "years_experience": "Estimated years of experience (e.g. 6+ years)",
-    "core_technical_skills": ["Skill1", "Skill2", "Skill3", ...],
-    "soft_skills": ["Communication", "Leadership", ...],
-    "search_keywords": ["Top 3-4 keywords to search jobs in UK (e.g. 'Full Stack Developer', 'Python', 'React')"],
-    "summary": "A 2-sentence summary of the candidate's core strengths and career focus.",
-    "ai_powered": true
+    "candidate_name": "Full Name",
+    "target_title": "Primary professional title (e.g. Senior IT Service Management & Operations Leader)",
+    "years_experience": "Years of experience (e.g. 29 years or 10+ years)",
+    "core_technical_skills": ["ServiceNow", "ITIL v3", "Incident Management", "Microsoft Azure", "Splunk", "Datadog", "Power BI", "SQL", ...],
+    "soft_skills": ["Major Incident Leadership", "Stakeholder Management", "Vendor SLA Governance", ...],
+    "search_keywords": ["Top 4 targeted search terms for UK job market (e.g. 'IT Service Management', 'IT Operations Manager', 'ServiceNow', 'Azure')"],
+    "summary": "2-3 sentence executive summary highlighting key career achievements, platforms managed, and leadership scope."
 }}"""
 
-    try:
-        response = client.models.generate_content(
-            model=DEFAULT_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1,
+    # Model priority chain
+    for model_name in [PRIMARY_MODEL, FALLBACK_MODEL]:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.1,
+                )
             )
-        )
-        data = json.loads(response.text)
-        data["ai_powered"] = True
-        return data
-    except Exception as e:
-        logger.error(f"Gemini CV extraction failed: {e}. Falling back to heuristic.")
-        fallback = extract_cv_profile_fallback(cv_text)
-        fallback["error"] = str(e)
-        return fallback
+            data = json.loads(response.text)
+            data["ai_powered"] = True
+            logger.info(f"Successfully extracted CV profile using {model_name}.")
+            return data
+        except Exception as e:
+            logger.warning(f"Gemini CV extraction with {model_name} failed: {e}. Trying next option...")
+
+    logger.error("All Gemini models failed. Falling back to multi-domain heuristic extractor.")
+    return extract_cv_profile_fallback(cv_text)
 
 
 def score_jobs_heuristic(cv_profile: Dict[str, Any], jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Heuristic scoring engine used when Gemini API key is not yet provided."""
+    """Heuristic scoring engine used when Gemini API key is unavailable."""
     scored_jobs = []
     candidate_skills = [s.lower() for s in cv_profile.get("core_technical_skills", [])]
+    target_title_words = [w.lower() for w in cv_profile.get("target_title", "").split() if len(w) > 3]
     
     for job in jobs:
         job_text = f"{job.get('title', '')} {job.get('description', '')} {' '.join(job.get('tags', []))}".lower()
@@ -136,20 +244,23 @@ def score_jobs_heuristic(cv_profile: Dict[str, Any], jobs: List[Dict[str, Any]])
             if tag.lower() not in candidate_skills and tag.title() not in matched:
                 missing.append(tag.title())
 
+        # Calculate score based on title and skill overlap
+        title_overlap = sum(1 for w in target_title_words if w in job.get('title', '').lower())
         match_count = len(matched)
-        base_score = 5.0 + min(4.5, match_count * 0.9)
-        score = round(min(9.8, max(4.0, base_score)), 1)
         
-        tier = "High" if score >= 8.0 else ("Good" if score >= 6.5 else "Moderate")
+        base_score = 5.5 + min(3.5, match_count * 0.7) + min(1.0, title_overlap * 0.5)
+        score = round(min(9.8, max(4.5, base_score)), 1)
+        
+        tier = "High" if score >= 8.5 else ("Good" if score >= 7.0 else "Moderate")
         
         scored_jobs.append({
             **job,
             "match_score": score,
             "match_tier": tier,
-            "matching_skills": matched[:6] if matched else ["Transferable Engineering Skills"],
+            "matching_skills": matched[:6] if matched else ["Enterprise IT Leadership", "Operations Governance"],
             "missing_skills": missing[:4] if missing else ["Role-specific tooling"],
-            "rationale": f"Strong alignment with {job.get('title')} requirements. Matched {len(matched)} core competencies including {', '.join(matched[:3]) if matched else 'general experience'}.",
-            "application_tip": f"Highlight your hands-on experience with {', '.join(matched[:2]) if matched else 'core tools'} and relevant project outcomes.",
+            "rationale": f"Strong alignment with {job.get('title')}. Matches {len(matched)} key competencies including {', '.join(matched[:3]) if matched else 'core operational practices'}.",
+            "application_tip": f"Emphasize your hands-on achievements with {', '.join(matched[:2]) if matched else 'service delivery'} and quantifiable cost/incident reductions.",
             "scored_by_ai": False
         })
         
@@ -159,7 +270,7 @@ def score_jobs_heuristic(cv_profile: Dict[str, Any], jobs: List[Dict[str, Any]])
 
 def score_jobs_with_gemini(cv_profile: Dict[str, Any], jobs: List[Dict[str, Any]], api_key: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Uses Gemini LLM Agent to rigorously compare the candidate's CV against each job posting.
+    Uses Gemini LLM Agent to evaluate the candidate's CV against each job posting.
     Outputs a score out of 10, matched skills, gaps, and tailored rationale.
     """
     client = get_gemini_client(api_key)
@@ -170,7 +281,6 @@ def score_jobs_with_gemini(cv_profile: Dict[str, Any], jobs: List[Dict[str, Any]
     if not jobs:
         return []
 
-    # Compact job representations to save tokens and minimize latency
     jobs_summary = []
     for idx, job in enumerate(jobs):
         jobs_summary.append({
@@ -183,15 +293,15 @@ def score_jobs_with_gemini(cv_profile: Dict[str, Any], jobs: List[Dict[str, Any]
             "description_snippet": job.get("description", "")[:500]
         })
 
-    prompt = f"""You are an elite Talent Acquisition & AI Matching Agent.
+    prompt = f"""You are an elite Talent Acquisition & Executive Recruitment Agent.
 Compare the Candidate's profile against each UK job listing.
-For EVERY job in the list, evaluate how well the candidate's skills and experience match the job requirements, and give a score out of 10.0 (e.g. 9.4, 8.2, 7.0, 5.5).
+For EVERY job in the list, evaluate how well the candidate's skills, experience, and domain seniority match the requirements, and give a rating out of 10.0 (e.g. 9.5, 8.8, 7.5, 6.0).
 
 Scoring Guidelines:
-- 9.0 - 10.0: Exceptional match. Candidate possesses almost all must-have skills and relevant seniority.
-- 7.5 - 8.9: Strong match. Candidate has majority of core skills with minor gaps that can be easily learned.
-- 6.0 - 7.4: Moderate match. Good transferable foundation but missing key specific frameworks/technologies.
-- Below 6.0: Weak match. Significant domain or technology disconnect.
+- 9.0 - 10.0: Exceptional match. Candidate possesses almost all must-have skills, domain seniority, and platforms.
+- 7.5 - 8.9: Strong match. Candidate has majority of core skills with minor gaps.
+- 6.0 - 7.4: Moderate match. Good transferable foundation but missing key specific tooling.
+- Below 6.0: Weak match. Significant domain or seniority disconnect.
 
 Candidate Profile:
 - Name: {cv_profile.get('candidate_name')}
@@ -207,61 +317,62 @@ Return ONLY a valid JSON array of objects with the exact format:
 [
   {{
     "index": 0,
-    "match_score": 8.8,
+    "match_score": 9.2,
     "match_tier": "High",
-    "matching_skills": ["SkillA", "SkillB"],
-    "missing_skills": ["SkillC"],
+    "matching_skills": ["SkillA", "SkillB", "SkillC"],
+    "missing_skills": ["SkillD"],
     "rationale": "2 concise sentences explaining why the candidate matches this role and what justifies the score.",
     "application_tip": "1 practical tip on what to highlight when applying for this specific job."
   }}
 ]"""
 
-    try:
-        response = client.models.generate_content(
-            model=DEFAULT_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
+    # Try primary then fallback model
+    for model_name in [PRIMARY_MODEL, FALLBACK_MODEL]:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                )
             )
-        )
-        evaluations = json.loads(response.text)
-        
-        # Merge Gemini evaluations back into the original job items
-        eval_dict = {item.get("index"): item for item in evaluations if isinstance(item, dict)}
-        
-        scored_jobs = []
-        for idx, job in enumerate(jobs):
-            eval_data = eval_dict.get(idx)
-            if eval_data:
-                score = round(float(eval_data.get("match_score", 7.0)), 1)
-                scored_jobs.append({
-                    **job,
-                    "match_score": score,
-                    "match_tier": eval_data.get("match_tier", "Good"),
-                    "matching_skills": eval_data.get("matching_skills", []),
-                    "missing_skills": eval_data.get("missing_skills", []),
-                    "rationale": eval_data.get("rationale", "Good alignment with candidate profile."),
-                    "application_tip": eval_data.get("application_tip", "Tailor your application to highlight relevant projects."),
-                    "scored_by_ai": True
-                })
-            else:
-                # Fallback for any unindexed item
-                scored_jobs.append({
-                    **job,
-                    "match_score": 7.0,
-                    "match_tier": "Good",
-                    "matching_skills": job.get("tags", [])[:3],
-                    "missing_skills": [],
-                    "rationale": "Matches general technical requirements.",
-                    "application_tip": "Highlight relevant project experience.",
-                    "scored_by_ai": False
-                })
+            evaluations = json.loads(response.text)
+            eval_dict = {item.get("index"): item for item in evaluations if isinstance(item, dict)}
+            
+            scored_jobs = []
+            for idx, job in enumerate(jobs):
+                eval_data = eval_dict.get(idx)
+                if eval_data:
+                    score = round(float(eval_data.get("match_score", 7.0)), 1)
+                    scored_jobs.append({
+                        **job,
+                        "match_score": score,
+                        "match_tier": eval_data.get("match_tier", "Good"),
+                        "matching_skills": eval_data.get("matching_skills", []),
+                        "missing_skills": eval_data.get("missing_skills", []),
+                        "rationale": eval_data.get("rationale", "Good alignment with candidate profile."),
+                        "application_tip": eval_data.get("application_tip", "Tailor your application to highlight relevant projects."),
+                        "scored_by_ai": True
+                    })
+                else:
+                    scored_jobs.append({
+                        **job,
+                        "match_score": 7.0,
+                        "match_tier": "Good",
+                        "matching_skills": job.get("tags", [])[:3],
+                        "missing_skills": [],
+                        "rationale": "Matches general technical and operational requirements.",
+                        "application_tip": "Highlight relevant project experience.",
+                        "scored_by_ai": False
+                    })
 
-        # Sort descending by match score
-        scored_jobs.sort(key=lambda x: x["match_score"], reverse=True)
-        return scored_jobs
+            scored_jobs.sort(key=lambda x: x["match_score"], reverse=True)
+            logger.info(f"Successfully scored jobs using {model_name}.")
+            return scored_jobs
 
-    except Exception as e:
-        logger.error(f"Gemini batch scoring failed: {e}. Falling back to heuristic.")
-        return score_jobs_heuristic(cv_profile, jobs)
+        except Exception as e:
+            logger.warning(f"Gemini job scoring with {model_name} failed: {e}. Trying next option...")
+
+    logger.error("All Gemini scoring models failed. Using heuristic scoring engine.")
+    return score_jobs_heuristic(cv_profile, jobs)

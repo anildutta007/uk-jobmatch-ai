@@ -146,6 +146,89 @@ CURATED_UK_JOBS: List[Dict[str, Any]] = [
         "tags": ["Node.js", "TypeScript", "Express", "MongoDB", "AWS", "Redis"],
         "posted_date": "2 days ago",
         "source": "UK Tech Board"
+    },
+    {
+        "id": "uk-curated-9",
+        "title": "Senior IT Service Operations Manager",
+        "company": "Vanguard Global Logistics",
+        "location": "London, UK (Hybrid / Chelmsford Accessible)",
+        "salary": "£85,000 - £100,000 + Benefits",
+        "description": (
+            "We are seeking an experienced Senior IT Service Operations Manager to oversee mission-critical "
+            "platforms and 24/7 global delivery. Requirements: 10+ years in IT Service Management, ITIL governance, "
+            "ServiceNow workflows (Incident, Problem, Change, CMDB), Major Incident Management, Azure cloud operations, "
+            "SLA/OLA management, and multi-vendor delivery governance. Experience with Splunk and Datadog monitoring."
+        ),
+        "url": "https://www.cwjobs.co.uk/jobs/it-service-operations-manager/in-london",
+        "tags": ["ServiceNow", "ITIL", "Incident Management", "Problem Management", "Azure", "Splunk", "SLA Management", "Major Incident Management"],
+        "posted_date": "Recently posted",
+        "source": "UK IT Board"
+    },
+    {
+        "id": "uk-curated-10",
+        "title": "IT Delivery & Service Transition Lead",
+        "company": "Maritime IoT & Fleet Systems",
+        "location": "Essex / London, UK (Hybrid / Remote)",
+        "salary": "£75,000 - £90,000",
+        "description": (
+            "Lead end-to-end service transition and delivery for our connected IoT and enterprise cloud infrastructure. "
+            "Key responsibilities: establish operating models, runbooks, RACI, and service catalogues. Drive Agile/Scrum "
+            "multi-vendor teams. Required: Strong experience in Microsoft Azure, Azure IoT Suite, CMDB management, "
+            "stakeholder communication, and ITIL v3/v4 frameworks."
+        ),
+        "url": "https://www.reed.co.uk/jobs/service-transition-manager-in-london",
+        "tags": ["Service Transition", "Azure IoT", "Azure", "ITIL", "Agile", "Vendor Management", "Stakeholder Management"],
+        "posted_date": "1 day ago",
+        "source": "UK IT Board"
+    },
+    {
+        "id": "uk-curated-11",
+        "title": "Head of IT Service Management (ITSM)",
+        "company": "Equiniti Enterprise Services",
+        "location": "London, UK (Remote UK Options)",
+        "salary": "£90,000 - £110,000",
+        "description": (
+            "Drive enterprise-wide ITSM transformation across global financial operations. Responsibilities: "
+            "direct Incident, Problem, Change Advisory Board (CAB) governance, and ServiceNow platform optimization. "
+            "Manage multi-sourced supplier contracts and cloud service budgets. Desired: ITIL certification, Azure cloud "
+            "governance, and proven leadership of distributed technical teams."
+        ),
+        "url": "https://www.totaljobs.com/jobs/head-of-it-service-management",
+        "tags": ["ITIL", "ServiceNow", "Incident Management", "Change Management", "Azure", "Budget Management", "Vendor Management"],
+        "posted_date": "3 days ago",
+        "source": "UK IT Board"
+    },
+    {
+        "id": "uk-curated-12",
+        "title": "Cloud Operations & Major Incident Lead",
+        "company": "FinTech Cloud Solutions UK",
+        "location": "London, UK (Remote UK)",
+        "salary": "£80,000 - £95,000",
+        "description": (
+            "Looking for a Cloud Operations Lead to ensure 99.9%+ availability across Azure cloud workloads. "
+            "Lead high-priority P1/P2 major incidents, conduct root-cause analysis with problem management teams, "
+            "and leverage Datadog, Splunk, and Azure Monitor for proactive observability. ServiceNow expertise required."
+        ),
+        "url": "https://www.technojobs.co.uk/jobs/major-incident-manager",
+        "tags": ["Azure", "Incident Management", "Major Incident Management", "Datadog", "Splunk", "ServiceNow", "Problem Management"],
+        "posted_date": "2 days ago",
+        "source": "UK IT Board"
+    },
+    {
+        "id": "uk-curated-13",
+        "title": "Operations & Analytics Lead (Power BI / SQL)",
+        "company": "Global Logistics Analytics",
+        "location": "London, UK (Hybrid)",
+        "salary": "£70,000 - £85,000",
+        "description": (
+            "Lead operational performance reporting and executive KPI dashboards. Translate complex operational data "
+            "into strategic insights. Essential skills: SQL, Power BI, Qlik Sense, Advanced Excel, Azure Data services, "
+            "and experience presenting to senior executive stakeholders."
+        ),
+        "url": "https://www.cwjobs.co.uk/jobs/operations-analytics-lead",
+        "tags": ["SQL", "Power BI", "Qlik Sense", "KPI Dashboards", "Data Analysis", "Azure"],
+        "posted_date": "Just now",
+        "source": "UK IT Board"
     }
 ]
 
