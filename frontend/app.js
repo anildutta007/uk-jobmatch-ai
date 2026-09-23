@@ -467,31 +467,19 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         ` : ''}
 
-        <!-- Direct Job Boards Links Bar & Primary Action -->
+        <!-- Direct Job Listing Action -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-800/80 pt-3">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-[11px] font-semibold text-slate-400 mr-1">View on:</span>
-            ${job.google_jobs_url ? `
-              <a href="${job.google_jobs_url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 hover:border-slate-600 transition" title="Open interactive Google for Jobs panel">
-                <i data-lucide="search" class="w-3 h-3 text-blue-400"></i> Google Jobs
-              </a>` : ''}
-            ${job.linkedin_url ? `
-              <a href="${job.linkedin_url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 hover:border-slate-600 transition" title="Search live postings on LinkedIn">
-                <i data-lucide="linkedin" class="w-3 h-3 text-sky-400"></i> LinkedIn
-              </a>` : ''}
-            ${job.indeed_url ? `
-              <a href="${job.indeed_url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 hover:border-slate-600 transition" title="Search live postings on Indeed UK">
-                <i data-lucide="briefcase" class="w-3 h-3 text-indigo-400"></i> Indeed UK
-              </a>` : ''}
-            ${job.reed_url ? `
-              <a href="${job.reed_url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 hover:border-slate-600 transition" title="Search live postings on Reed.co.uk">
-                <i data-lucide="file-text" class="w-3 h-3 text-emerald-400"></i> Reed UK
-              </a>` : ''}
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[11px] font-medium">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400"></i> Direct Job Post (${job.source || "UK Board"})
+            </span>
+            <span class="text-slate-500">•</span>
+            <span>${job.posted_date || "Active UK vacancy"}</span>
           </div>
 
-          <a href="${job.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/25 transition">
-            <span>Apply / View Job</span>
-            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          <a href="${job.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition transform active:scale-[0.98]">
+            <span>Open Specific Job Listing & Apply</span>
+            <i data-lucide="external-link" class="w-4 h-4"></i>
           </a>
         </div>
       `;
