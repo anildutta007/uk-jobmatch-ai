@@ -388,14 +388,60 @@ def pre_filter_and_rank_jobs(jobs: List[Dict[str, Any]], keywords: List[str], ma
     return [job for _, job in scored_jobs[:max_count]]
 
 
+import urllib.parse
+
+
+def enrich_job_links(job: Dict[str, Any], target_location: str = "United Kingdom") -> Dict[str, Any]:
+    """
+    Enriches every job listing with direct application and search links across
+    Google Jobs, LinkedIn, Indeed UK, and Reed.co.uk.
+    """
+    title = job.get("title", "")
+    company = job.get("company", "")
+    location = job.get("location", target_location)
+
+    # Clean strings for query
+    clean_title = re.sub(r"[^\w\s-]", " ", title).strip()
+    clean_company = re.sub(r"[^\w\s-]", " ", company).strip()
+
+    # 1. Google for Jobs deep link (opens actual interactive job card with all active application sources)
+    query_str = f"{clean_title} {clean_company} {location} jobs UK"
+    google_jobs_url = f"https://www.google.com/search?q={urllib.parse.quote(query_str)}&ibp=htl;jobs"
+
+    # 2. LinkedIn direct job search
+    linkedin_query = f"{clean_title} {clean_company}".strip()
+    linkedin_url = f"https://www.linkedin.com/jobs/search/?keywords={urllib.parse.quote(linkedin_query)}&location={urllib.parse.quote(location)}"
+
+    # 3. Indeed UK direct job search
+    indeed_query = f"{clean_title} {clean_company}".strip()
+    indeed_url = f"https://uk.indeed.com/jobs?q={urllib.parse.quote(indeed_query)}&l={urllib.parse.quote(location)}"
+
+    # 4. Reed.co.uk direct job search
+    reed_url = f"https://www.reed.co.uk/jobs?keywords={urllib.parse.quote(clean_title)}&location={urllib.parse.quote(location)}"
+
+    # 5. Direct primary link:
+    # If the job has an existing direct link (from Arbeitnow, Remotive, or Adzuna), keep it.
+    # Otherwise use the Google Jobs interactive view which connects directly to the real job posting!
+    primary_url = job.get("url")
+    if not primary_url or "search" in primary_url.lower() or primary_url.endswith("/"):
+        primary_url = google_jobs_url
+
+    job["url"] = primary_url
+    job["google_jobs_url"] = google_jobs_url
+    job["linkedin_url"] = linkedin_url
+    job["indeed_url"] = indeed_url
+    job["reed_url"] = reed_url
+    return job
+
+
 async def aggregate_uk_jobs(search_keywords: List[str], target_location: str = "United Kingdom", max_results: int = 15) -> List[Dict[str, Any]]:
     """
     Master function to aggregate UK jobs across all available providers:
-    1. Curated UK Tech jobs pool
+    1. Curated UK Tech & Operations jobs pool
     2. Arbeitnow API (UK/Remote)
     3. Remotive API (Remote UK eligible)
     4. Adzuna UK (if configured in .env)
-    Then filters and selects the top candidates for Gemini evaluation.
+    Then filters and enriches top candidates with direct live application links.
     """
     all_jobs: List[Dict[str, Any]] = []
 
@@ -403,7 +449,7 @@ async def aggregate_uk_jobs(search_keywords: List[str], target_location: str = "
     all_jobs.extend(CURATED_UK_JOBS)
 
     # Primary query keyword
-    primary_query = search_keywords[0] if search_keywords else "software engineer"
+    primary_query = search_keywords[0] if search_keywords else "IT Service Operations"
 
     # 2. Try fetching from public free APIs
     try:
@@ -436,4 +482,7 @@ async def aggregate_uk_jobs(search_keywords: List[str], target_location: str = "
 
     # Pre-filter to top candidate pool for LLM scoring
     selected_jobs = pre_filter_and_rank_jobs(unique_jobs, search_keywords, max_count=max_results)
-    return selected_jobs
+
+    # Enrich every selected job with live application and job board links
+    enriched_jobs = [enrich_job_links(job, target_location) for job in selected_jobs]
+    return enriched_jobs
