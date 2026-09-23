@@ -9,9 +9,11 @@ Integrates with:
 - Curated UK vacancies with verified direct post links on Reed.co.uk
 """
 
+from __future__ import annotations
 import os
 import re
 import logging
+from typing import List, Dict, Any, Optional
 import httpx
 
 try:
