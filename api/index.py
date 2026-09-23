@@ -9,4 +9,17 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
-from backend.main import app
+try:
+    from backend.main import app
+except Exception as e:
+    import traceback
+    from fastapi import FastAPI
+    from fastapi.responses import PlainTextResponse
+
+    err_text = traceback.format_exc()
+    app = FastAPI()
+
+    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"])
+    async def catch_all(path: str):
+        return PlainTextResponse(f"Startup Exception in Vercel:\n{err_text}", status_code=500)
+

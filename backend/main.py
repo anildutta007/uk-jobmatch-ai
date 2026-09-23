@@ -87,6 +87,12 @@ class SaveKeyRequest(BaseModel):
     api_key: str
 
 
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint to verify backend status."""
+    return {"status": "ok", "message": "UK JobMatch AI backend operational"}
+
+
 @api_router.get("/config")
 async def get_config():
     """Returns application configuration status and API key detection."""
