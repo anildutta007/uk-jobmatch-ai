@@ -41,7 +41,34 @@ Click **"Load Sample Senior Full-Stack CV"** in the web app, choose your locatio
 
 ---
 
-## Project Structure
+## GitHub & Vercel Deployment
+
+This project is already pre-configured for **GitHub** and **Vercel** serverless deployment.
+
+### 1. Push to GitHub
+1. Create a new repository on GitHub (e.g., `uk-jobmatch-ai` at [github.com/new](https://github.com/new)).
+2. In your terminal, link your remote and push:
+```bash
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
+git push -u origin main
+```
+*(Your secret `.env` file is protected by `.gitignore` and will never be committed to GitHub).*
+
+---
+
+### 2. Deploy to Vercel
+1. Go to your [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New..." > "Project"**.
+2. Select your `uk-jobmatch-ai` GitHub repository and click **Import**.
+3. In the **Environment Variables** section, add:
+   - **`GEMINI_API_KEY`**: `your_actual_gemini_api_key`
+   - **`DEFAULT_COUNTRY`**: `gb` (optional)
+   - **`DEFAULT_LOCATION`**: `United Kingdom` (optional)
+4. Click **Deploy**.
+
+Vercel will:
+- Automatically serve static frontend assets (`public/`) at the root `/` on its global Edge Network.
+- Automatically route `/api/*` to the Python Serverless function via [`vercel.json`](file:///c:/Anil%20Google%20Projects/vercel.json) and [`api/index.py`](file:///c:/Anil%20Google%20Projects/api/index.py).
+- Provide you with an active, free HTTPS URL (e.g. `https://uk-jobmatch-ai.vercel.app`).
 
 ```
 Anil Google Projects/
