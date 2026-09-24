@@ -16,15 +16,17 @@ sys.path.insert(0, str(BASE_DIR))
 # Load .env file
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
+import io
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from backend.cv_parser import parse_cv_document
 from backend.job_services import aggregate_uk_jobs
 from backend.gemini_agent import extract_cv_profile, score_jobs_with_gemini, tailor_cv_and_cover_letter
+from backend.pdf_generator import build_cv_pdf, build_cover_letter_pdf
 
 app = FastAPI(
     title="AI Job Matcher & Scorer",
@@ -103,6 +105,16 @@ class TailorApplicationRequest(BaseModel):
     cv_text: str
     selected_jobs: List[SelectedJobItem]
     custom_api_key: Optional[str] = None
+
+
+class DownloadPdfRequest(BaseModel):
+    doc_type: Optional[str] = "cv"  # "cv" or "cover_letter"
+    content_text: str
+    candidate_name: Optional[str] = "Candidate"
+    target_role: Optional[str] = "Target Role"
+    target_company: Optional[str] = "Target Company"
+    key_skills: Optional[List[str]] = []
+
 
 
 @api_router.get("/health")
@@ -270,6 +282,50 @@ async def tailor_application_endpoint(req: TailorApplicationRequest):
         result = tailor_cv_and_cover_letter(req.cv_text, jobs_dicts, active_api_key)
         return result
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/download-cv-pdf")
+async def download_cv_pdf_endpoint(req: DownloadPdfRequest):
+    """
+    Generates an executive-formatted PDF for either the tailored CV or cover letter.
+    """
+    try:
+        if not req.content_text or not req.content_text.strip():
+            raise HTTPException(status_code=400, detail="Content text cannot be empty.")
+
+        if req.doc_type == "cover_letter":
+            pdf_bytes = build_cover_letter_pdf(
+                cover_letter_text=req.content_text,
+                candidate_name=req.candidate_name or "Candidate",
+                target_role=req.target_role or "Target Role",
+                target_company=req.target_company or "Target Company"
+            )
+            safe_role = "".join(c for c in (req.target_role or "Application") if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+            filename = f"Cover_Letter_{safe_role}.pdf"
+        else:
+            pdf_bytes = build_cv_pdf(
+                cv_text=req.content_text,
+                candidate_name=req.candidate_name or "Candidate",
+                target_role=req.target_role or "Target Role",
+                target_company=req.target_company or "Target Company",
+                key_skills=req.key_skills or []
+            )
+            safe_role = "".join(c for c in (req.target_role or "CV") if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+            filename = f"Tailored_CV_{safe_role}.pdf"
+
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
     except HTTPException:
         raise
     except Exception as e:

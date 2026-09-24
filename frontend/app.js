@@ -14,7 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentLoadedJobs = [];
   let selectedJobIds = new Set();
   let tailorResultData = null;
-  let activeTailorTabIndex = 0;
+  let activeJobIndex = 0;
+  let activeDocType = "cv";
 
   // DOM Elements
   const dropZone = document.getElementById("dropZone");
@@ -37,10 +38,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const dismissTailorModalBtn = document.getElementById("dismissTailorModalBtn");
   const tailorAiBadge = document.getElementById("tailorAiBadge");
   const tailorSubtitle = document.getElementById("tailorSubtitle");
+  const jobTabsNav = document.getElementById("jobTabsNav");
+  const activeJobTitleCompany = document.getElementById("activeJobTitleCompany");
+  const activeJobSkillsList = document.getElementById("activeJobSkillsList");
   const amendmentsSection = document.getElementById("amendmentsSection");
   const amendmentsList = document.getElementById("amendmentsList");
-  const tailorTabsNav = document.getElementById("tailorTabsNav");
+  const docTypeCvBtn = document.getElementById("docTypeCvBtn");
+  const docTypeCoverBtn = document.getElementById("docTypeCoverBtn");
   const activeDocumentLabel = document.getElementById("activeDocumentLabel");
+  const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+  const downloadPdfBtnText = document.getElementById("downloadPdfBtnText");
   const copyActiveDocBtn = document.getElementById("copyActiveDocBtn");
   const copyBtnText = document.getElementById("copyBtnText");
   const copyIcon = document.getElementById("copyIcon");
@@ -613,80 +620,207 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  function getApplicationsList() {
+    if (!tailorResultData) return [];
+    if (Array.isArray(tailorResultData.applications) && tailorResultData.applications.length > 0) {
+      return tailorResultData.applications;
+    }
+    // Fallback if legacy structure returned
+    return [{
+      job_title: "Target Position",
+      company: "Target Employer",
+      target_skills_highlighted: [],
+      key_amendments: tailorResultData.key_amendments || [],
+      tailored_cv: tailorResultData.tailored_cv || "",
+      cover_letter: (tailorResultData.cover_letters && tailorResultData.cover_letters[0]) ? tailorResultData.cover_letters[0].content : ""
+    }];
+  }
+
   function renderTailorModal(data) {
     tailorResultData = data;
-    activeTailorTabIndex = 0;
+    activeJobIndex = 0;
+    activeDocType = "cv";
 
     // AI Badge
     if (data.ai_powered) {
-      tailorAiBadge.textContent = "Gemini 2.0 Flash Tailored";
+      const model = data.model_used ? `Gemini (${data.model_used})` : "Gemini 2.0 Flash";
+      tailorAiBadge.textContent = `${model} Tailored`;
       tailorAiBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
     } else {
-      tailorAiBadge.textContent = "Heuristic Tailored";
+      tailorAiBadge.textContent = "Spec-Aligned Heuristic Tailored";
       tailorAiBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20";
     }
 
-    // Amendments
-    if (data.key_amendments && data.key_amendments.length > 0) {
+    const applications = getApplicationsList();
+    if (applications.length === 0) {
+      alert("No application packages were generated.");
+      return;
+    }
+
+    renderJobTabs();
+    selectJob(0);
+    tailorModal.classList.remove("hidden");
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function renderJobTabs() {
+    jobTabsNav.innerHTML = "";
+    const applications = getApplicationsList();
+
+    applications.forEach((app, idx) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const isSelected = (idx === activeJobIndex);
+      btn.className = `flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0 ${
+        isSelected
+          ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 border border-indigo-500"
+          : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 hover:text-white"
+      }`;
+
+      const company = app.company || `Company ${idx + 1}`;
+      const title = app.job_title || "Target Role";
+      btn.innerHTML = `
+        <span class="w-5 h-5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'} flex items-center justify-center text-[10px] font-bold">${idx + 1}</span>
+        <div class="text-left leading-tight">
+          <span class="block font-bold">${company}</span>
+          <span class="block text-[10px] ${isSelected ? 'text-indigo-200' : 'text-slate-400'} truncate max-w-[150px]">${title}</span>
+        </div>
+      `;
+      btn.addEventListener("click", () => selectJob(idx));
+      jobTabsNav.appendChild(btn);
+    });
+  }
+
+  function selectJob(index) {
+    activeJobIndex = index;
+    renderJobTabs();
+
+    const applications = getApplicationsList();
+    const app = applications[activeJobIndex] || applications[0];
+
+    // Update Active Job Title & Company
+    activeJobTitleCompany.textContent = `${app.job_title || "Target Role"} @ ${app.company || "Target Employer"}`;
+
+    // Update Skills Elevated Badge Row
+    activeJobSkillsList.innerHTML = "";
+    const skills = app.target_skills_highlighted || [];
+    if (skills.length > 0) {
+      const label = document.createElement("span");
+      label.className = "text-[11px] text-slate-400 mr-1";
+      label.textContent = "Spec Skills Elevated:";
+      activeJobSkillsList.appendChild(label);
+
+      skills.slice(0, 6).forEach(skill => {
+        const span = document.createElement("span");
+        span.className = "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25";
+        span.innerHTML = `<i data-lucide="check" class="w-2.5 h-2.5"></i>${skill}`;
+        activeJobSkillsList.appendChild(span);
+      });
+    }
+
+    // Update Key Amendments
+    const amendments = app.key_amendments || [];
+    if (amendments.length > 0) {
       amendmentsSection.classList.remove("hidden");
-      amendmentsList.innerHTML = data.key_amendments.map(item => `<li>${item}</li>`).join("");
+      amendmentsList.innerHTML = amendments.map(item => `<li>${item}</li>`).join("");
     } else {
       amendmentsSection.classList.add("hidden");
     }
 
-    // Render Tabs
-    tailorTabsNav.innerHTML = "";
-
-    // Tab 0: Tailored CV
-    const cvTabBtn = document.createElement("button");
-    cvTabBtn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-bold transition border-b-2 cursor-pointer border-indigo-500 text-white bg-slate-900";
-    cvTabBtn.innerHTML = `<i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i><span>Amended CV</span>`;
-    cvTabBtn.addEventListener("click", () => selectTailorTab(0));
-    tailorTabsNav.appendChild(cvTabBtn);
-
-    // Cover Letter Tabs
-    (data.cover_letters || []).forEach((letter, idx) => {
-      const tabBtn = document.createElement("button");
-      tabBtn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent hover:border-slate-700 cursor-pointer";
-      tabBtn.innerHTML = `<i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400"></i><span>Cover Letter: ${letter.company || `Role ${idx+1}`}</span>`;
-      tabBtn.addEventListener("click", () => selectTailorTab(idx + 1));
-      tailorTabsNav.appendChild(tabBtn);
-    });
-
+    updateDocTypeUI();
     if (window.lucide) window.lucide.createIcons();
-    updateActiveTabContent();
-    tailorModal.classList.remove("hidden");
   }
 
-  function selectTailorTab(index) {
-    activeTailorTabIndex = index;
-    const tabButtons = tailorTabsNav.querySelectorAll("button");
-    tabButtons.forEach((btn, idx) => {
-      if (idx === index) {
-        btn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-bold transition border-b-2 cursor-pointer border-indigo-500 text-white bg-slate-900";
-        const icon = btn.querySelector("svg");
-        if (icon) icon.classList.add("text-indigo-400");
-      } else {
-        btn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent hover:border-slate-700 cursor-pointer";
-      }
-    });
-    updateActiveTabContent();
+  function setDocType(docType) {
+    activeDocType = docType;
+    updateDocTypeUI();
+    if (window.lucide) window.lucide.createIcons();
   }
 
-  function updateActiveTabContent() {
-    if (!tailorResultData) return;
+  function updateDocTypeUI() {
+    const applications = getApplicationsList();
+    const app = applications[activeJobIndex] || applications[0];
 
-    if (activeTailorTabIndex === 0) {
-      activeDocumentLabel.textContent = "Strategically Amended CV (Markdown Format)";
-      tailorDocumentText.textContent = tailorResultData.tailored_cv || "No tailored CV generated.";
+    if (activeDocType === "cv") {
+      docTypeCvBtn.className = "flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-bold transition border-b-2 border-indigo-500 text-white bg-slate-900 cursor-pointer";
+      docTypeCvBtn.querySelector("svg")?.classList.add("text-indigo-400");
+      docTypeCoverBtn.className = "flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent hover:border-slate-700 cursor-pointer";
+      docTypeCoverBtn.querySelector("svg")?.classList.remove("text-indigo-400");
+
+      activeDocumentLabel.textContent = `Spec-Tailored CV for ${app.job_title} at ${app.company}`;
+      tailorDocumentText.textContent = app.tailored_cv || "No tailored CV generated.";
+      downloadPdfBtnText.textContent = "Download Formatted CV (PDF)";
     } else {
-      const letter = (tailorResultData.cover_letters || [])[activeTailorTabIndex - 1];
-      if (letter) {
-        activeDocumentLabel.textContent = `Bespoke Cover Letter for ${letter.company} (${letter.job_title})`;
-        tailorDocumentText.textContent = letter.content || "";
-      }
+      docTypeCoverBtn.className = "flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-bold transition border-b-2 border-indigo-500 text-white bg-slate-900 cursor-pointer";
+      docTypeCoverBtn.querySelector("svg")?.classList.add("text-indigo-400");
+      docTypeCvBtn.className = "flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent hover:border-slate-700 cursor-pointer";
+      docTypeCvBtn.querySelector("svg")?.classList.remove("text-indigo-400");
+
+      activeDocumentLabel.textContent = `Spec-Focused Cover Letter for ${app.company} (${app.job_title})`;
+      tailorDocumentText.textContent = app.cover_letter || "No cover letter generated.";
+      downloadPdfBtnText.textContent = "Download Formatted Cover Letter (PDF)";
     }
   }
+
+  docTypeCvBtn.addEventListener("click", () => setDocType("cv"));
+  docTypeCoverBtn.addEventListener("click", () => setDocType("cover_letter"));
+
+  // Download Executive PDF via Backend ReportLab Service
+  downloadPdfBtn.addEventListener("click", async () => {
+    const applications = getApplicationsList();
+    const app = applications[activeJobIndex] || applications[0];
+    const text = tailorDocumentText.textContent;
+    if (!text) {
+      alert("No content available to export as PDF.");
+      return;
+    }
+
+    const originalText = downloadPdfBtnText.textContent;
+    downloadPdfBtn.disabled = true;
+    downloadPdfBtnText.textContent = "Generating PDF...";
+
+    try {
+      const candidateName = profileName?.textContent || "Candidate";
+      const resp = await fetch("/api/download-cv-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doc_type: activeDocType,
+          content_text: text,
+          candidate_name: candidateName,
+          target_role: app.job_title || "Target Role",
+          target_company: app.company || "Target Company",
+          key_skills: app.target_skills_highlighted || []
+        })
+      });
+
+      if (!resp.ok) {
+        const errJson = await resp.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Failed to generate PDF document.");
+      }
+
+      const blob = await resp.blob();
+      const safeCompany = (app.company || "Company").replace(/[^a-zA-Z0-9]/g, "_");
+      const safeRole = (app.job_title || "Role").replace(/[^a-zA-Z0-9]/g, "_");
+      const filename = activeDocType === "cv"
+        ? `Tailored_CV_${safeCompany}_${safeRole}.pdf`
+        : `Cover_Letter_${safeCompany}_${safeRole}.pdf`;
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      alert("PDF Export Error: " + err.message);
+    } finally {
+      downloadPdfBtn.disabled = false;
+      downloadPdfBtnText.textContent = originalText;
+    }
+  });
 
   // Copy to clipboard
   copyActiveDocBtn.addEventListener("click", async () => {
@@ -694,11 +828,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      copyBtnText.textContent = "Copied to Clipboard!";
+      copyBtnText.textContent = "Copied!";
       copyIcon.setAttribute("data-lucide", "check");
       if (window.lucide) window.lucide.createIcons();
       setTimeout(() => {
-        copyBtnText.textContent = "Copy to Clipboard";
+        copyBtnText.textContent = "Copy";
         copyIcon.setAttribute("data-lucide", "copy");
         if (window.lucide) window.lucide.createIcons();
       }, 2000);
@@ -707,15 +841,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Download document
+  // Download document (.txt)
   downloadActiveDocBtn.addEventListener("click", () => {
+    const applications = getApplicationsList();
+    const app = applications[activeJobIndex] || applications[0];
     const text = tailorDocumentText.textContent;
     if (!text) return;
-    let filename = "Amended_CV.txt";
-    if (activeTailorTabIndex > 0 && tailorResultData.cover_letters && tailorResultData.cover_letters[activeTailorTabIndex - 1]) {
-      const company = (tailorResultData.cover_letters[activeTailorTabIndex - 1].company || "Employer").replace(/[^a-zA-Z0-9]/g, "_");
-      filename = `Cover_Letter_${company}.txt`;
-    }
+
+    const safeCompany = (app.company || "Company").replace(/[^a-zA-Z0-9]/g, "_");
+    const safeRole = (app.job_title || "Role").replace(/[^a-zA-Z0-9]/g, "_");
+    const filename = activeDocType === "cv"
+      ? `Tailored_CV_${safeCompany}_${safeRole}.txt`
+      : `Cover_Letter_${safeCompany}_${safeRole}.txt`;
+
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

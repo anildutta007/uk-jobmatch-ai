@@ -378,189 +378,166 @@ Return ONLY a valid JSON array of objects with the exact format:
     return score_jobs_heuristic(cv_profile, jobs)
 
 
-def tailor_application_fallback(cv_text: str, selected_jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
+def tailor_single_job_fallback(cv_text: str, job: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Deterministic fallback generator for CV amendment and bespoke cover letters
-    when Gemini API key is not configured or during service outages.
+    Deterministic fallback generator for an individual job specification.
+    Produces a dedicated tailored CV and a deeply spec-focused cover letter citing exact required skills.
     """
     lines = [l.strip() for l in cv_text.splitlines() if l.strip()]
     name = lines[0] if lines else "Candidate Name"
     if "|" in name:
         name = name.split("|")[0].strip()
 
-    job_titles = [j.get("title", "Target Role") for j in selected_jobs]
-    target_roles_str = " / ".join(job_titles[:3])
+    title = job.get("title", "Target Role")
+    company = job.get("company", "Target Company")
+    location = job.get("location", "United Kingdom")
+    salary = job.get("salary", "Competitive")
+    tags = job.get("tags", [])
+    
+    # Extract tags or description keywords
+    if not tags:
+        tags = ["Service Delivery", "Operations Management", "Stakeholder Leadership"]
+    
+    tags_str = ", ".join(tags[:6])
+    primary_skills = ", ".join(tags[:3])
 
-    # Extract all tags and keywords from selected jobs
-    all_job_skills = set()
-    for j in selected_jobs:
-        for t in j.get("tags", []):
-            all_job_skills.add(t)
-
-    highlighted_skills = ", ".join(list(all_job_skills)[:12]) or "Key Operational and Technical Competencies"
-
-    # Tailored CV Draft
+    # 1. Spec-Tailored CV
     tailored_cv = f"""# {name}
-**Target Roles: {target_roles_str}**
-*United Kingdom*
+**Target Role: {title}  |  {company}**
+*{location}  •  {salary}*
 
 ---
 
 ## PROFESSIONAL SUMMARY
-Results-driven senior professional with extensive commercial experience directly aligned with {target_roles_str}. Proven track record delivering operational excellence, robust governance, and technical innovation across mission-critical enterprise environments. Adept at driving stakeholder satisfaction, managing complex cross-functional deliverables, and applying industry best practices ({highlighted_skills}) to achieve measurable organizational goals.
+Results-driven senior professional with extensive experience tailored specifically for the **{title}** position at **{company}**. Proven track record delivering operational excellence, robust governance, and technical alignment across mission-critical environments. Brings deep expertise in **{tags_str}**, with a demonstrated ability to optimize service workflows, manage complex multi-vendor delivery, and exceed organizational SLA commitments for {company}.
 
 ---
 
-## CORE COMPETENCIES & TARGET SKILLS
-- **Role Alignment:** {target_roles_str}
-- **Key Methodologies & Tools:** {highlighted_skills}
-- **Leadership & Governance:** Stakeholder Management, SLA Delivery, Vendor Oversight, Continuous Service Improvement, Risk Management
+## TARGETED CORE COMPETENCIES FOR {title.upper()}
+- **Priority Requirements for {company}:** {tags_str}
+- **Governance & Operations:** ITIL Practices, SLA/OLA Management, Incident & Problem Resolution, CAB Leadership
+- **Delivery & Architecture:** Vendor Management, Service Transition, Continuous Improvement, Risk Mitigation
 
 ---
 
 ## PROFESSIONAL WORK HISTORY
-*(Refined and optimized for {target_roles_str})*
+*(Optimized and aligned with {company} {title} specifications)*
 
 {cv_text}
 
 ---
 
-## EDUCATION & PROFESSIONAL QUALIFICATIONS
-- Professional Certifications & Degree credentials aligned with UK industry standards.
+## EDUCATION & PROFESSIONAL CREDENTIALS
+- Relevant Professional Certifications and Academic Qualifications aligned with UK industry standards.
 """
 
-    # Generate bespoke cover letter for each selected job
-    cover_letters = []
-    for idx, job in enumerate(selected_jobs):
-        company = job.get("company", "Hiring Company")
-        title = job.get("title", "Specialist Role")
-        loc = job.get("location", "United Kingdom")
-        tags_str = ", ".join(job.get("tags", [])[:5]) or "core industry standards"
-
-        letter_content = f"""{name}
+    # 2. Spec-Focused Cover Letter
+    cover_letter = f"""{name}
 United Kingdom
 
 Date: {job.get('posted_date') or 'Current Application'}
 
 Hiring Team
 {company}
-{loc}
+{location}
 
-Subject: Application for {title}
+Subject: Application for {title} - {name}
 
-Dear Hiring Manager,
+Dear Hiring Team at {company},
 
-I am writing to express my enthusiastic interest in the {title} opportunity at {company}. Having reviewed the requirements for this role, I am confident that my extensive background in delivering high-value technical outcomes, combined with my commitment to service excellence, make me an outstanding candidate for your team.
+I am writing to express my enthusiastic interest in the {title} vacancy at {company}. Having thoroughly examined your job specification, I was particularly drawn to your emphasis on {tags_str}. With a proven career founded on disciplined execution and service excellence, I am confident that my background directly aligns with the operational priorities and challenges of this role.
 
-Throughout my career, I have specialized in driving strategic initiatives that demand disciplined execution, clear governance, and deep domain expertise. Specifically, my experience with {tags_str} has enabled me to consistently exceed performance targets, resolve complex challenges, and foster collaboration across diverse multi-vendor stakeholders. The mission and operational standards at {company} strongly align with my professional ethos and approach to continuous improvement.
+In reviewing your requirements, I noted the critical need for hands-on leadership in {primary_skills}. Throughout my commercial experience, I have spearheaded initiatives that demanded these exact competencies—establishing robust governance models, resolving complex operational bottlenecks, and ensuring multi-stakeholder SLA compliance. My background in orchestrating cross-functional teams and managing enterprise-grade service delivery equips me to immediately contribute to {company}'s ongoing success.
 
-I welcome the opportunity to discuss how my transferable skills and proven leadership can add immediate value to {company}'s ongoing objectives. Thank you for your time and consideration, and I look forward to hearing from you.
+Furthermore, the core responsibilities outlined in your vacancy—ranging from proactive incident mitigation to stakeholder relationship management—strongly resonate with my leadership methodology. I approach every operational challenge with a focus on measurable business impact, transparency, and continual service improvement.
+
+I would welcome the opportunity to discuss how my tailored expertise in {tags_str} can support {company}'s strategic goals. Thank you for your time and consideration, and I look forward to hearing from you.
 
 Yours sincerely,
 
 {name}
 """
-        cover_letters.append({
-            "job_id": job.get("id", f"job-{idx+1}"),
-            "job_title": title,
-            "company": company,
-            "recipient": f"Hiring Team at {company}",
-            "content": letter_content.strip()
-        })
 
     key_amendments = [
-        f"Strategically realigned Professional Summary toward {target_roles_str}.",
-        f"Elevated core competencies matching {', '.join(j.get('company', '') for j in selected_jobs)} specifications.",
-        "Highlighted measurable impact, governance, and SLA adherence across work history.",
-        "Generated bespoke, company-specific UK cover letters for each selected employer."
+        f"Realigned Professional Summary specifically for {title} at {company}.",
+        f"Promoted required competencies ({tags_str}) to the top of Core Skills.",
+        f"Reframed achievements to focus on governance, SLAs, and technical requirements matching {company}.",
+        f"Drafted bespoke UK cover letter directly addressing the {title} specification."
     ]
 
     return {
-        "success": True,
-        "ai_powered": False,
-        "tailored_cv": tailored_cv.strip(),
+        "job_id": job.get("id", f"job-{title}"),
+        "job_title": title,
+        "company": company,
+        "location": location,
+        "salary": salary,
+        "target_skills_highlighted": tags[:6],
         "key_amendments": key_amendments,
-        "cover_letters": cover_letters
+        "tailored_cv": tailored_cv.strip(),
+        "cover_letter": cover_letter.strip()
     }
 
 
-def tailor_cv_and_cover_letter(
+def tailor_single_job_gemini(
     cv_text: str,
-    selected_jobs: List[Dict[str, Any]],
-    api_key: Optional[str] = None
-) -> Dict[str, Any]:
+    job: Dict[str, Any],
+    client: genai.Client
+) -> Optional[Dict[str, Any]]:
     """
-    Uses Google Gemini LLM Agent to:
-    1. Amend and optimize candidate CV specifically for up to 3 selected job requirements.
-    2. Generate an individual, bespoke UK cover letter for EACH of the selected jobs.
-    3. Outline strategic amendments made for ATS optimization.
+    Uses Gemini LLM Agent to tailor a CV and generate a bespoke, spec-focused cover letter
+    for a single job specification.
     """
-    if not selected_jobs:
-        return {"success": False, "error": "No jobs selected for tailoring."}
-
-    client = get_gemini_client(api_key)
-    if not client:
-        logger.info("No Gemini API key detected; using intelligent application tailoring fallback.")
-        return tailor_application_fallback(cv_text, selected_jobs)
-
-    # Format selected jobs for LLM prompt
-    jobs_context = []
-    for idx, job in enumerate(selected_jobs[:3]):
-        jobs_context.append({
-            "job_index": idx + 1,
-            "title": job.get("title"),
-            "company": job.get("company"),
-            "location": job.get("location"),
-            "salary": job.get("salary"),
-            "tags": job.get("tags", []),
-            "description": job.get("description", "")[:800]
-        })
+    title = job.get("title", "Target Role")
+    company = job.get("company", "Target Company")
+    location = job.get("location", "United Kingdom")
+    salary = job.get("salary", "Competitive")
+    tags = job.get("tags", [])
+    desc = job.get("description", "")[:1200]
 
     prompt = f"""You are an elite UK Executive Career Consultant, ATS Specialist, and Professional Resume Writer.
-The user has selected {len(jobs_context)} target UK job listings and wants their CV amended to cater directly to these requirements, along with bespoke covering letters for EACH selected company.
+Tailor the candidate's CV specifically for this SINGLE UK job vacancy, and generate a bespoke, spec-focused UK cover letter.
 
-TARGET JOB LISTINGS:
-{json.dumps(jobs_context, indent=2)}
-
-ORIGINAL CANDIDATE CV:
+TARGET JOB SPECIFICATION:
+- Title: {title}
+- Company: {company}
+- Location: {location}
+- Salary: {salary}
+- Stated Skills / Tags: {', '.join(tags)}
+- Job Description & Responsibilities:
 \"\"\"
-{cv_text[:7000]}
+{desc}
 \"\"\"
 
-YOUR TASKS:
-1. AMEND THE CV (tailored_cv):
-   - Rewrite the CV in clean, elegant Markdown.
-   - Refactor the Professional Summary to directly address the key responsibilities, seniority, and common denominators of the target roles.
-   - Organize and elevate Core Technical & Operational Competencies with the specific platforms, tools, and methodologies required by the target jobs (e.g. ITIL, ServiceNow, Cloud, Analytics, SLA governance, etc.).
-   - Refine experience bullet points to emphasize quantifiable business outcomes, cost savings, uptime metrics, and leadership relevant to these roles.
-   - Maintain strict factual truth (do NOT fabricate fake companies or fake degrees; reframe real accomplishments with high-impact language and relevant ATS keywords).
+CANDIDATE ORIGINAL CV:
+\"\"\"
+{cv_text[:6000]}
+\"\"\"
 
-2. GENERATE BESPOKE UK COVERING LETTERS (cover_letters):
-   - For EACH of the {len(jobs_context)} target jobs, write a DISTINCT, high-converting UK-standard cover letter.
-   - Address each letter specifically to the hiring manager at that company (e.g. "Hiring Team at NEST Corporation").
-   - Highlight the candidate's specific accomplishments that solve THAT company's stated requirements.
-   - Format with UK professional business etiquette (engaging opening hook, 2 strong evidence-based value paragraphs, confident closing).
-
-3. KEY AMENDMENTS (key_amendments):
-   - Provide 3-5 concise bullet points highlighting the strategic changes made to the CV for the candidate's awareness.
+DELIVERABLES:
+1. target_skills_highlighted: List of 4-8 specific skills, platforms, and methodologies from this job spec that you elevated in the CV.
+2. key_amendments: List of 3-4 bullet points detailing how the CV was customized for {company} (e.g. elevated required tools, re-aligned summary, quantified relevant metrics).
+3. tailored_cv: A comprehensive, beautifully structured Markdown CV tailored exclusively for {title} at {company}.
+   - Professional Summary must be written specifically for {company}, highlighting how the candidate's career prepares them for this exact role.
+   - Core Competencies must feature the exact skills requested in the job spec at the top.
+   - Work Experience must emphasize accomplishments and tools matching this job description.
+   - Factual accuracy must be preserved (do not invent fake degrees or employers).
+4. cover_letter: A bespoke, formal UK business cover letter addressed to the Hiring Team at {company}.
+   - MUST explicitly cite and focus on the skills requested in the job spec ({', '.join(tags)}).
+   - Paragraph 1: Enthusiastic opening specifying {title} at {company}.
+   - Paragraph 2: Direct evidence of candidate's achievements in the required technical/operational skills from this spec.
+   - Paragraph 3: Direct alignment with the responsibilities and challenges described in the job spec.
+   - Paragraph 4: Formal, confident UK business closing and call to action.
 
 Return ONLY a valid JSON object with this exact structure:
 {{
+  "target_skills_highlighted": ["Skill1", "Skill2", "Skill3"],
   "key_amendments": [
-    "Realigned executive summary to target [Titles]",
-    "Emphasized [Specific Tooling / Methodology] prominently in skills and achievements",
-    "Quantified [Impact Area] to match requirements of [Company Name]"
+    "Realigned executive summary specifically for {title} at {company}",
+    "Elevated [Key Tool] and [Key Skill] to top of Core Competencies",
+    "Highlighted quantifiable achievements in [Area] to match job requirements"
   ],
-  "tailored_cv": "# Full Name\\n\\n## Professional Summary\\n...",
-  "cover_letters": [
-    {{
-      "job_index": 1,
-      "company": "Company Name",
-      "job_title": "Job Title",
-      "recipient": "Hiring Team at Company Name",
-      "content": "Full text of the tailored cover letter..."
-    }}
-  ]
+  "tailored_cv": "# Candidate Name\\n\\n**Target Role: {title} | {company}**\\n...",
+  "cover_letter": "Full text of the spec-focused cover letter..."
 }}"""
 
     for model_name in [PRIMARY_MODEL, FALLBACK_MODEL]:
@@ -574,31 +551,73 @@ Return ONLY a valid JSON object with this exact structure:
                 )
             )
             data = json.loads(response.text)
-            
-            # Map cover letters to include job ids
-            cover_letters_enriched = []
-            for letter in data.get("cover_letters", []):
-                idx = letter.get("job_index", 1) - 1
-                job_ref = selected_jobs[idx] if 0 <= idx < len(selected_jobs) else selected_jobs[0]
-                cover_letters_enriched.append({
-                    "job_id": job_ref.get("id", f"job-{idx+1}"),
-                    "job_title": letter.get("job_title", job_ref.get("title")),
-                    "company": letter.get("company", job_ref.get("company")),
-                    "recipient": letter.get("recipient", f"Hiring Team at {job_ref.get('company')}"),
-                    "content": letter.get("content", "")
-                })
-
-            logger.info(f"Successfully tailored CV and generated cover letters using {model_name}.")
+            logger.info(f"Successfully tailored application for {company} using {model_name}.")
             return {
-                "success": True,
-                "ai_powered": True,
-                "tailored_cv": data.get("tailored_cv", ""),
+                "job_id": job.get("id", f"job-{title}"),
+                "job_title": title,
+                "company": company,
+                "location": location,
+                "salary": salary,
+                "target_skills_highlighted": data.get("target_skills_highlighted", tags[:6]),
                 "key_amendments": data.get("key_amendments", []),
-                "cover_letters": cover_letters_enriched
+                "tailored_cv": data.get("tailored_cv", "").strip(),
+                "cover_letter": data.get("cover_letter", "").strip()
             }
-
         except Exception as e:
-            logger.warning(f"Gemini CV tailoring with {model_name} failed: {e}. Trying next option...")
+            logger.warning(f"Gemini tailoring for {company} with {model_name} failed: {e}. Trying next option...")
 
-    logger.error("All Gemini models failed for CV tailoring. Using heuristic fallback.")
-    return tailor_application_fallback(cv_text, selected_jobs)
+    return None
+
+
+def tailor_cv_and_cover_letter(
+    cv_text: str,
+    selected_jobs: List[Dict[str, Any]],
+    api_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Master function:
+    Creates an INDIVIDUAL tailored CV and a SPEC-FOCUSED cover letter for EACH selected job (up to 3).
+    Each CV specifically brings forward the skills most needed for that job requirement.
+    """
+    if not selected_jobs:
+        return {"success": False, "error": "No jobs selected for tailoring."}
+
+    client = get_gemini_client(api_key)
+    applications = []
+    any_ai_powered = False
+
+    for job in selected_jobs[:3]:
+        app_package = None
+        if client:
+            app_package = tailor_single_job_gemini(cv_text, job, client)
+            if app_package:
+                any_ai_powered = True
+
+        # Fallback if client is None or Gemini call failed
+        if not app_package:
+            app_package = tailor_single_job_fallback(cv_text, job)
+
+        applications.append(app_package)
+
+    # Legacy compatibility fields for top-level consumers
+    primary_app = applications[0] if applications else {}
+    legacy_cover_letters = [
+        {
+            "job_id": app["job_id"],
+            "job_title": app["job_title"],
+            "company": app["company"],
+            "recipient": f"Hiring Team at {app['company']}",
+            "content": app["cover_letter"]
+        }
+        for app in applications
+    ]
+
+    return {
+        "success": True,
+        "ai_powered": any_ai_powered,
+        "applications": applications,
+        # Legacy backward-compatible fields:
+        "tailored_cv": primary_app.get("tailored_cv", ""),
+        "key_amendments": primary_app.get("key_amendments", []),
+        "cover_letters": legacy_cover_letters
+    }

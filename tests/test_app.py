@@ -135,16 +135,53 @@ def test_tailor_application():
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
-    assert "tailored_cv" in data and len(data["tailored_cv"]) > 50
-    assert "cover_letters" in data and len(data["cover_letters"]) == 3
-    assert "key_amendments" in data and len(data["key_amendments"]) > 0
+    assert "applications" in data and len(data["applications"]) == 3
 
-    # Verify cover letters are company-specific
-    companies = [cl["company"] for cl in data["cover_letters"]]
-    assert "NEST Corporation" in companies
-    assert "CMC Markets" in companies
-    assert "Mitimes Solutions" in companies
-    print(f"PASS: POST /api/tailor-application tailored CV and generated {len(data['cover_letters'])} bespoke cover letters.")
+    # Verify per-job CVs and cover letters
+    for idx, app_pkg in enumerate(data["applications"]):
+        assert "tailored_cv" in app_pkg and len(app_pkg["tailored_cv"]) > 50, f"App {idx} must have tailored CV"
+        assert "cover_letter" in app_pkg and len(app_pkg["cover_letter"]) > 50, f"App {idx} must have cover letter"
+        assert "target_skills_highlighted" in app_pkg and len(app_pkg["target_skills_highlighted"]) > 0, f"App {idx} must have target skills"
+        # Verify job-specific skills are highlighted
+        if app_pkg["company"] == "NEST Corporation":
+            assert any("ITIL" in s or "ServiceNow" in s or "SLA" in s for s in app_pkg["target_skills_highlighted"])
+            assert "NEST Corporation" in app_pkg["cover_letter"]
+
+    print(f"PASS: POST /api/tailor-application created {len(data['applications'])} individual, spec-tailored CVs and cover letters.")
+
+
+def test_pdf_download():
+    client = TestClient(app)
+
+    # 1. Test CV PDF Generation
+    cv_req = {
+        "doc_type": "cv",
+        "content_text": "# Alex Turner\n\nSenior Software Engineer\n\n## SUMMARY\nExperienced engineer specializing in cloud architectures and Python.\n\n## CORE SKILLS\n- Python, FastAPI, Docker, PostgreSQL\n\n## EXPERIENCE\n### Lead Engineer - Tech Corp (2020 - Present)\n- Built microservices serving 1M daily requests.\n- Reduced cloud infrastructure costs by 30%.",
+        "candidate_name": "Alex Turner",
+        "target_role": "Senior Cloud Engineer",
+        "target_company": "Acme Cloud UK",
+        "key_skills": ["Python", "FastAPI", "Docker", "PostgreSQL"]
+    }
+    resp = client.post("/api/download-cv-pdf", json=cv_req)
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content.startswith(b"%PDF"), "Generated file must have %PDF header"
+    assert len(resp.content) > 1000, "PDF must not be empty"
+    print("PASS: POST /api/download-cv-pdf returned formatted CV PDF.")
+
+    # 2. Test Cover Letter PDF Generation
+    cl_req = {
+        "doc_type": "cover_letter",
+        "content_text": "Dear Hiring Manager,\n\nI am writing to express my strong interest in the Senior Cloud Engineer position at Acme Cloud UK.\n\nWith extensive experience in Python, FastAPI, and Docker, I have delivered resilient cloud solutions.\n\nThank you for considering my application.\n\nSincerely,\nAlex Turner",
+        "candidate_name": "Alex Turner",
+        "target_role": "Senior Cloud Engineer",
+        "target_company": "Acme Cloud UK"
+    }
+    resp = client.post("/api/download-cv-pdf", json=cl_req)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content.startswith(b"%PDF")
+    print("PASS: POST /api/download-cv-pdf returned formatted Cover Letter PDF.")
 
 
 if __name__ == "__main__":
@@ -154,4 +191,5 @@ if __name__ == "__main__":
     test_heuristic_scoring()
     test_api_endpoints()
     test_tailor_application()
+    test_pdf_download()
     print("ALL TESTS PASSED SUCCESSFULLY!")
