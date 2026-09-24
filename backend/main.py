@@ -6,7 +6,7 @@ Serves the API and modern web frontend.
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 
 # Ensure current and parent directory are on sys.path
@@ -24,7 +24,7 @@ from pydantic import BaseModel
 
 from backend.cv_parser import parse_cv_document
 from backend.job_services import aggregate_uk_jobs
-from backend.gemini_agent import extract_cv_profile, score_jobs_with_gemini
+from backend.gemini_agent import extract_cv_profile, score_jobs_with_gemini, tailor_cv_and_cover_letter
 
 app = FastAPI(
     title="AI Job Matcher & Scorer",
@@ -85,6 +85,24 @@ EDUCATION & CERTIFICATIONS
 
 class SaveKeyRequest(BaseModel):
     api_key: str
+
+
+class SelectedJobItem(BaseModel):
+    id: Optional[str] = ""
+    title: str
+    company: str
+    location: Optional[str] = "UK"
+    salary: Optional[str] = "Competitive"
+    description: Optional[str] = ""
+    tags: Optional[List[str]] = []
+    url: Optional[str] = ""
+    posted_date: Optional[str] = ""
+
+
+class TailorApplicationRequest(BaseModel):
+    cv_text: str
+    selected_jobs: List[SelectedJobItem]
+    custom_api_key: Optional[str] = None
 
 
 @api_router.get("/health")
@@ -218,12 +236,42 @@ async def match_jobs(
         return {
             "success": True,
             "filename": filename,
+            "cv_text": extracted_text,
             "profile": cv_profile,
             "jobs": scored_jobs,
             "count": len(scored_jobs),
             "ai_powered": cv_profile.get("ai_powered", False)
         }
 
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/tailor-application")
+async def tailor_application_endpoint(req: TailorApplicationRequest):
+    """
+    Tailors candidate's CV and generates bespoke cover letters for up to 3 selected jobs.
+    """
+    try:
+        if not req.cv_text or not req.cv_text.strip():
+            raise HTTPException(status_code=400, detail="CV text is required for tailoring.")
+
+        if not req.selected_jobs or len(req.selected_jobs) == 0:
+            raise HTTPException(status_code=400, detail="Please select at least 1 job (up to 3) to tailor your application.")
+
+        if len(req.selected_jobs) > 3:
+            raise HTTPException(status_code=400, detail="A maximum of 3 jobs can be selected for tailoring.")
+
+        active_api_key = req.custom_api_key or os.getenv("GEMINI_API_KEY")
+        jobs_dicts = [j.model_dump() for j in req.selected_jobs]
+
+        result = tailor_cv_and_cover_letter(req.cv_text, jobs_dicts, active_api_key)
+        return result
+
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()

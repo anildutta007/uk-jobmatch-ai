@@ -95,10 +95,63 @@ def test_api_endpoints():
     print(f"PASS: POST /api/match-jobs matched {len(res_data['jobs'])} jobs. Top Match: {top_job['title']} (Score: {top_job['match_score']}/10).")
 
 
+def test_tailor_application():
+    client = TestClient(app)
+    sample_path = BASE_DIR / "sample_cv.txt"
+    with open(sample_path, "r", encoding="utf-8") as f:
+        cv_text = f.read()
+
+    selected_jobs = [
+        {
+            "id": "job-1",
+            "title": "Senior Service Delivery Manager",
+            "company": "NEST Corporation",
+            "location": "London, UK",
+            "tags": ["ITIL", "ServiceNow", "SLA Delivery"],
+            "description": "Lead enterprise IT service delivery, major incident management, and ITIL operations."
+        },
+        {
+            "id": "job-2",
+            "title": "Service Delivery Manager",
+            "company": "CMC Markets",
+            "location": "London, UK",
+            "tags": ["Incident Management", "Problem Management", "Change Management"],
+            "description": "Manage multi-vendor services, SLA compliance, and CAB governance."
+        },
+        {
+            "id": "job-3",
+            "title": "IT Operations Lead",
+            "company": "Mitimes Solutions",
+            "location": "London, UK",
+            "tags": ["ITSM", "Cloud Operations", "Continuous Improvement"],
+            "description": "Drive IT operational excellence and 24/7 service availability."
+        }
+    ]
+
+    resp = client.post("/api/tailor-application", json={
+        "cv_text": cv_text,
+        "selected_jobs": selected_jobs
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["success"] is True
+    assert "tailored_cv" in data and len(data["tailored_cv"]) > 50
+    assert "cover_letters" in data and len(data["cover_letters"]) == 3
+    assert "key_amendments" in data and len(data["key_amendments"]) > 0
+
+    # Verify cover letters are company-specific
+    companies = [cl["company"] for cl in data["cover_letters"]]
+    assert "NEST Corporation" in companies
+    assert "CMC Markets" in companies
+    assert "Mitimes Solutions" in companies
+    print(f"PASS: POST /api/tailor-application tailored CV and generated {len(data['cover_letters'])} bespoke cover letters.")
+
+
 if __name__ == "__main__":
     print("--- Running UK JobMatch AI Test Suite ---")
     test_cv_parser()
     test_job_aggregation()
     test_heuristic_scoring()
     test_api_endpoints()
+    test_tailor_application()
     print("ALL TESTS PASSED SUCCESSFULLY!")

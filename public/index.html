@@ -287,6 +287,26 @@
 
     </main>
 
+    <!-- Floating Selection Bar (Appears when 1-3 jobs are selected) -->
+    <div id="selectionBar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 hidden transition-all duration-300">
+      <div class="bg-slate-900/95 border border-indigo-500/50 backdrop-blur-md shadow-2xl shadow-indigo-950/80 rounded-2xl px-5 py-3 flex items-center gap-4 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-semibold text-slate-200">
+            <strong id="selectedCountDisplay" class="text-white font-bold text-sm">0</strong> of 3 Jobs Selected
+          </span>
+        </div>
+        <div class="h-4 w-px bg-slate-700"></div>
+        <button id="tailorAppBtn" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-600/30 transition transform active:scale-95 cursor-pointer">
+          <i data-lucide="sparkles" class="w-4 h-4 text-indigo-200"></i>
+          <span>Tailor CV & Generate Cover Letters</span>
+        </button>
+        <button id="clearSelectionBtn" class="text-slate-400 hover:text-white px-2 py-1 transition cursor-pointer" title="Deselect all">
+          Clear
+        </button>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="border-t border-slate-800/80 bg-slate-900/40 py-6 text-center text-xs text-slate-500">
       <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -312,7 +332,7 @@
 
       <div class="space-y-4 text-xs text-slate-300">
         <p>
-          The application uses <strong class="text-white">Google Gemini 2.5 Flash</strong> to extract CV competencies and compare candidate profiles against live job descriptions.
+          The application uses <strong class="text-white">Google Gemini 2.0 Flash</strong> to extract CV competencies and compare candidate profiles against live job descriptions.
         </p>
 
         <!-- Current Status -->
@@ -338,6 +358,91 @@
         <button type="button" id="cancelSettingsBtn" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">Cancel</button>
         <button type="button" id="saveKeyBtn" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition shadow-md shadow-indigo-600/30">Save to .env</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Tailoring In-Progress Modal -->
+  <div id="tailorLoadingModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-4 animate-scale-up">
+      <div class="w-16 h-16 mx-auto rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 animate-spin">
+        <i data-lucide="sparkles" class="w-8 h-8"></i>
+      </div>
+      <div class="space-y-1.5">
+        <h3 class="text-lg font-bold text-white">Synthesizing Tailored Application</h3>
+        <p class="text-xs text-indigo-300 font-medium">Google Gemini Agent is at work</p>
+      </div>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Aligning your professional achievements with the target requirements, optimizing ATS keyword density, and drafting bespoke UK cover letters for each selected employer...
+      </p>
+    </div>
+  </div>
+
+  <!-- Tailored Application Suite Modal -->
+  <div id="tailorModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-scale-up">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <i data-lucide="file-check" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-white">Tailored Application Package</h3>
+              <span id="tailorAiBadge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Gemini AI Tailored</span>
+            </div>
+            <p id="tailorSubtitle" class="text-xs text-slate-400">Amended for your selected job vacancies</p>
+          </div>
+        </div>
+        <button id="closeTailorModalBtn" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Strategic Amendments Box -->
+      <div id="amendmentsSection" class="px-6 py-3 bg-indigo-950/20 border-b border-indigo-500/15 space-y-1.5 text-xs text-slate-300">
+        <div class="flex items-center gap-1.5 font-bold text-indigo-300 text-[11px] uppercase tracking-wider">
+          <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-indigo-400"></i>
+          <span>Strategic AI Enhancements Applied</span>
+        </div>
+        <ul id="amendmentsList" class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-300 list-disc list-inside">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
+
+      <!-- Tabs Navigation -->
+      <div class="flex items-center gap-2 px-6 pt-3 border-b border-slate-800 bg-slate-950/30 overflow-x-auto" id="tailorTabsNav">
+        <!-- Dynamic tabs generated by JS -->
+      </div>
+
+      <!-- Document Content Body -->
+      <div class="flex-1 p-6 overflow-y-auto bg-slate-950/50 space-y-3">
+        <div class="flex items-center justify-between text-xs text-slate-400 pb-2 border-b border-slate-800">
+          <span id="activeDocumentLabel" class="font-semibold text-slate-200">Amended CV</span>
+          <div class="flex items-center gap-2">
+            <button id="copyActiveDocBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition cursor-pointer">
+              <i data-lucide="copy" class="w-3.5 h-3.5 text-indigo-400" id="copyIcon"></i>
+              <span id="copyBtnText">Copy to Clipboard</span>
+            </button>
+            <button id="downloadActiveDocBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition cursor-pointer">
+              <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>Download (.txt)</span>
+            </button>
+          </div>
+        </div>
+
+        <pre id="tailorDocumentText" class="text-xs text-slate-200 font-mono whitespace-pre-wrap leading-relaxed select-text p-4 bg-slate-900/60 rounded-xl border border-slate-800/80 max-h-[460px] overflow-y-auto"></pre>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between px-6 py-3.5 border-t border-slate-800 bg-slate-950/60">
+        <span class="text-xs text-slate-500">Ready to copy and paste into application portals</span>
+        <button id="dismissTailorModalBtn" class="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/30">
+          Done
+        </button>
+      </div>
+
     </div>
   </div>
 

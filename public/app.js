@@ -10,6 +10,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentFile = null;
   let sampleCvText = null;
   let sampleCvFilename = null;
+  let currentExtractedCvText = "";
+  let currentLoadedJobs = [];
+  let selectedJobIds = new Set();
+  let tailorResultData = null;
+  let activeTailorTabIndex = 0;
 
   // DOM Elements
   const dropZone = document.getElementById("dropZone");
@@ -20,6 +25,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const fileSizeDisplay = document.getElementById("fileSizeDisplay");
   const removeFileBtn = document.getElementById("removeFileBtn");
   const loadSampleBtn = document.getElementById("loadSampleBtn");
+
+  // Tailoring DOM Elements
+  const selectionBar = document.getElementById("selectionBar");
+  const selectedCountDisplay = document.getElementById("selectedCountDisplay");
+  const tailorAppBtn = document.getElementById("tailorAppBtn");
+  const clearSelectionBtn = document.getElementById("clearSelectionBtn");
+  const tailorLoadingModal = document.getElementById("tailorLoadingModal");
+  const tailorModal = document.getElementById("tailorModal");
+  const closeTailorModalBtn = document.getElementById("closeTailorModalBtn");
+  const dismissTailorModalBtn = document.getElementById("dismissTailorModalBtn");
+  const tailorAiBadge = document.getElementById("tailorAiBadge");
+  const tailorSubtitle = document.getElementById("tailorSubtitle");
+  const amendmentsSection = document.getElementById("amendmentsSection");
+  const amendmentsList = document.getElementById("amendmentsList");
+  const tailorTabsNav = document.getElementById("tailorTabsNav");
+  const activeDocumentLabel = document.getElementById("activeDocumentLabel");
+  const copyActiveDocBtn = document.getElementById("copyActiveDocBtn");
+  const copyBtnText = document.getElementById("copyBtnText");
+  const copyIcon = document.getElementById("copyIcon");
+  const downloadActiveDocBtn = document.getElementById("downloadActiveDocBtn");
+  const tailorDocumentText = document.getElementById("tailorDocumentText");
 
   const locationSelect = document.getElementById("locationSelect");
   const scoreThreshold = document.getElementById("scoreThreshold");
@@ -172,6 +198,9 @@ document.addEventListener("DOMContentLoaded", () => {
     e.stopPropagation();
     currentFile = null;
     sampleCvText = null;
+    currentExtractedCvText = "";
+    selectedJobIds.clear();
+    updateSelectionBarUI();
     fileInput.value = "";
     dropEmptyState.classList.remove("hidden");
     fileSelectedState.classList.add("hidden");
@@ -186,6 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await resp.json();
         sampleCvText = data.content;
         sampleCvFilename = data.filename;
+        currentExtractedCvText = data.content;
         currentFile = null;
         fileInput.value = "";
 
@@ -275,6 +305,11 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(data.detail || "Server error while processing jobs.");
       }
 
+      currentExtractedCvText = data.cv_text || sampleCvText || "";
+      currentLoadedJobs = data.jobs || [];
+      selectedJobIds.clear();
+      updateSelectionBarUI();
+
       // Mark all steps done
       for (let i = 1; i <= 4; i++) {
         document.getElementById(`step${i}`).className = "step-card done bg-slate-950/60 border border-emerald-500/40 rounded-xl p-3 text-center space-y-1";
@@ -355,8 +390,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    jobs.forEach((job) => {
+    jobs.forEach((job, index) => {
       const score = Number(job.match_score).toFixed(1);
+      const jobId = job.id || `${job.title}_${job.company}_${index}`;
+      const isSelected = selectedJobIds.has(jobId);
       
       // Score Color Classes
       let scoreBadgeClass = "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
@@ -376,7 +413,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const card = document.createElement("div");
-      card.className = "bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition-all shadow-lg hover:shadow-xl space-y-4 animate-fade-in";
+      card.className = isSelected 
+        ? "bg-slate-900/90 border-2 border-indigo-500/80 ring-4 ring-indigo-500/15 rounded-2xl p-6 transition-all shadow-xl shadow-indigo-950/40 space-y-4"
+        : "bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition-all shadow-lg hover:shadow-xl space-y-4 animate-fade-in";
 
       // Matched skills pills
       const matchedPills = (job.matching_skills || []).map(skill => 
@@ -393,8 +432,23 @@ document.addEventListener("DOMContentLoaded", () => {
       ).join(" ");
 
       card.innerHTML = `
+        <!-- Card Top Bar: Selection Toggle & Score Badge -->
+        <div class="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl border transition text-xs font-semibold ${isSelected ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/20' : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700 text-slate-300'}">
+            <input type="checkbox" class="job-select-checkbox w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-900 border-slate-600 cursor-pointer" data-job-id="${jobId}" ${isSelected ? 'checked' : ''}>
+            <span>${isSelected ? '✓ Selected for Tailoring' : 'Select to Tailor (Max 3)'}</span>
+          </label>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">${job.match_tier || "Match"}</span>
+            <div class="px-2.5 py-1 rounded-lg font-extrabold text-sm border flex items-center gap-1 shadow-sm ${scoreBadgeClass} ${scoreGlow}">
+              <i data-lucide="award" class="w-3.5 h-3.5"></i>
+              <span>${score}</span>
+              <span class="text-[10px] font-semibold opacity-75">/ 10</span>
+            </div>
+          </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          
           <!-- Job Details -->
           <div class="space-y-1.5 flex-1">
             <div class="flex flex-wrap items-center gap-2">
@@ -420,17 +474,6 @@ document.addEventListener("DOMContentLoaded", () => {
               </span>
             </div>
           </div>
-
-          <!-- Score Badge -->
-          <div class="flex items-center sm:flex-col items-end gap-1 flex-shrink-0">
-            <div class="px-4 py-2 rounded-xl font-extrabold text-xl border flex items-center gap-1.5 shadow-md ${scoreBadgeClass} ${scoreGlow}">
-              <i data-lucide="award" class="w-5 h-5"></i>
-              <span>${score}</span>
-              <span class="text-xs font-semibold opacity-75">/ 10</span>
-            </div>
-            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">${job.match_tier || "Match"}</span>
-          </div>
-
         </div>
 
         <!-- Gemini Rationale Box -->
@@ -484,6 +527,26 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
 
+      // Checkbox event
+      const chk = card.querySelector(".job-select-checkbox");
+      if (chk) {
+        chk.addEventListener("change", (e) => {
+          e.stopPropagation();
+          if (chk.checked) {
+            if (selectedJobIds.size >= 3) {
+              alert("You can select up to 3 jobs at a time to tailor your CV and cover letters.");
+              chk.checked = false;
+              return;
+            }
+            selectedJobIds.add(jobId);
+          } else {
+            selectedJobIds.delete(jobId);
+          }
+          updateSelectionBarUI();
+          renderJobs(currentLoadedJobs, true);
+        });
+      }
+
       jobsList.appendChild(card);
     });
 
@@ -491,5 +554,180 @@ document.addEventListener("DOMContentLoaded", () => {
       window.lucide.createIcons();
     }
   }
+
+  // 10. Selection Bar Controller
+  function updateSelectionBarUI() {
+    const count = selectedJobIds.size;
+    selectedCountDisplay.textContent = count;
+    if (count > 0) {
+      selectionBar.classList.remove("hidden");
+    } else {
+      selectionBar.classList.add("hidden");
+    }
+  }
+
+  clearSelectionBtn.addEventListener("click", () => {
+    selectedJobIds.clear();
+    updateSelectionBarUI();
+    renderJobs(currentLoadedJobs, true);
+  });
+
+  // 11. Tailor Application Suite Handlers
+  tailorAppBtn.addEventListener("click", async () => {
+    if (selectedJobIds.size === 0) {
+      alert("Please select at least 1 job (up to 3) from the list to tailor your application.");
+      return;
+    }
+    if (!currentExtractedCvText) {
+      alert("No CV content found. Please upload a CV or load the sample CV first.");
+      return;
+    }
+
+    const selectedList = currentLoadedJobs.filter((j, idx) => {
+      const jId = j.id || `${j.title}_${j.company}_${idx}`;
+      return selectedJobIds.has(jId);
+    });
+
+    tailorLoadingModal.classList.remove("hidden");
+
+    try {
+      const resp = await fetch("/api/tailor-application", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cv_text: currentExtractedCvText,
+          selected_jobs: selectedList
+        })
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        throw new Error(data.detail || data.error || "Failed to tailor application.");
+      }
+
+      tailorLoadingModal.classList.add("hidden");
+      renderTailorModal(data);
+    } catch (err) {
+      tailorLoadingModal.classList.add("hidden");
+      alert("Application Tailoring Error: " + err.message);
+    }
+  });
+
+  function renderTailorModal(data) {
+    tailorResultData = data;
+    activeTailorTabIndex = 0;
+
+    // AI Badge
+    if (data.ai_powered) {
+      tailorAiBadge.textContent = "Gemini 2.0 Flash Tailored";
+      tailorAiBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+    } else {
+      tailorAiBadge.textContent = "Heuristic Tailored";
+      tailorAiBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+    }
+
+    // Amendments
+    if (data.key_amendments && data.key_amendments.length > 0) {
+      amendmentsSection.classList.remove("hidden");
+      amendmentsList.innerHTML = data.key_amendments.map(item => `<li>${item}</li>`).join("");
+    } else {
+      amendmentsSection.classList.add("hidden");
+    }
+
+    // Render Tabs
+    tailorTabsNav.innerHTML = "";
+
+    // Tab 0: Tailored CV
+    const cvTabBtn = document.createElement("button");
+    cvTabBtn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-bold transition border-b-2 cursor-pointer border-indigo-500 text-white bg-slate-900";
+    cvTabBtn.innerHTML = `<i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i><span>Amended CV</span>`;
+    cvTabBtn.addEventListener("click", () => selectTailorTab(0));
+    tailorTabsNav.appendChild(cvTabBtn);
+
+    // Cover Letter Tabs
+    (data.cover_letters || []).forEach((letter, idx) => {
+      const tabBtn = document.createElement("button");
+      tabBtn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent hover:border-slate-700 cursor-pointer";
+      tabBtn.innerHTML = `<i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400"></i><span>Cover Letter: ${letter.company || `Role ${idx+1}`}</span>`;
+      tabBtn.addEventListener("click", () => selectTailorTab(idx + 1));
+      tailorTabsNav.appendChild(tabBtn);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+    updateActiveTabContent();
+    tailorModal.classList.remove("hidden");
+  }
+
+  function selectTailorTab(index) {
+    activeTailorTabIndex = index;
+    const tabButtons = tailorTabsNav.querySelectorAll("button");
+    tabButtons.forEach((btn, idx) => {
+      if (idx === index) {
+        btn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-bold transition border-b-2 cursor-pointer border-indigo-500 text-white bg-slate-900";
+        const icon = btn.querySelector("svg");
+        if (icon) icon.classList.add("text-indigo-400");
+      } else {
+        btn.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent hover:border-slate-700 cursor-pointer";
+      }
+    });
+    updateActiveTabContent();
+  }
+
+  function updateActiveTabContent() {
+    if (!tailorResultData) return;
+
+    if (activeTailorTabIndex === 0) {
+      activeDocumentLabel.textContent = "Strategically Amended CV (Markdown Format)";
+      tailorDocumentText.textContent = tailorResultData.tailored_cv || "No tailored CV generated.";
+    } else {
+      const letter = (tailorResultData.cover_letters || [])[activeTailorTabIndex - 1];
+      if (letter) {
+        activeDocumentLabel.textContent = `Bespoke Cover Letter for ${letter.company} (${letter.job_title})`;
+        tailorDocumentText.textContent = letter.content || "";
+      }
+    }
+  }
+
+  // Copy to clipboard
+  copyActiveDocBtn.addEventListener("click", async () => {
+    const text = tailorDocumentText.textContent;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtnText.textContent = "Copied to Clipboard!";
+      copyIcon.setAttribute("data-lucide", "check");
+      if (window.lucide) window.lucide.createIcons();
+      setTimeout(() => {
+        copyBtnText.textContent = "Copy to Clipboard";
+        copyIcon.setAttribute("data-lucide", "copy");
+        if (window.lucide) window.lucide.createIcons();
+      }, 2000);
+    } catch (e) {
+      alert("Copied text to clipboard!");
+    }
+  });
+
+  // Download document
+  downloadActiveDocBtn.addEventListener("click", () => {
+    const text = tailorDocumentText.textContent;
+    if (!text) return;
+    let filename = "Amended_CV.txt";
+    if (activeTailorTabIndex > 0 && tailorResultData.cover_letters && tailorResultData.cover_letters[activeTailorTabIndex - 1]) {
+      const company = (tailorResultData.cover_letters[activeTailorTabIndex - 1].company || "Employer").replace(/[^a-zA-Z0-9]/g, "_");
+      filename = `Cover_Letter_${company}.txt`;
+    }
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  closeTailorModalBtn.addEventListener("click", () => tailorModal.classList.add("hidden"));
+  dismissTailorModalBtn.addEventListener("click", () => tailorModal.classList.add("hidden"));
 
 });
