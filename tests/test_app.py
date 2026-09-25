@@ -142,12 +142,19 @@ def test_tailor_application():
         assert "tailored_cv" in app_pkg and len(app_pkg["tailored_cv"]) > 50, f"App {idx} must have tailored CV"
         assert "cover_letter" in app_pkg and len(app_pkg["cover_letter"]) > 50, f"App {idx} must have cover letter"
         assert "target_skills_highlighted" in app_pkg and len(app_pkg["target_skills_highlighted"]) > 0, f"App {idx} must have target skills"
+        
+        # CRITICAL USER REQUIREMENT: Tailored CV must NEVER mention the prospective hiring company!
+        target_company = app_pkg["company"]
+        assert target_company.lower() not in app_pkg["tailored_cv"].lower(), (
+            f"Tailored CV for {target_company} must NOT mention prospective employer in the CV body!"
+        )
+
         # Verify job-specific skills are highlighted
         if app_pkg["company"] == "NEST Corporation":
             assert any("ITIL" in s or "ServiceNow" in s or "SLA" in s for s in app_pkg["target_skills_highlighted"])
             assert "NEST Corporation" in app_pkg["cover_letter"]
 
-    print(f"PASS: POST /api/tailor-application created {len(data['applications'])} individual, spec-tailored CVs and cover letters.")
+    print(f"PASS: POST /api/tailor-application created {len(data['applications'])} individual, spec-tailored CVs (0 prospective company mentions) and cover letters.")
 
 
 def test_pdf_download():

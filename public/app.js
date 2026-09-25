@@ -747,7 +747,7 @@ document.addEventListener("DOMContentLoaded", () => {
       docTypeCoverBtn.className = "flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent hover:border-slate-700 cursor-pointer";
       docTypeCoverBtn.querySelector("svg")?.classList.remove("text-indigo-400");
 
-      activeDocumentLabel.textContent = `Spec-Tailored CV for ${app.job_title} at ${app.company}`;
+      activeDocumentLabel.textContent = `Submission-Ready CV (Optimized for ${app.job_title})`;
       tailorDocumentText.textContent = app.tailored_cv || "No tailored CV generated.";
       downloadPdfBtnText.textContent = "Download Formatted CV (PDF)";
     } else {
@@ -803,7 +803,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const safeCompany = (app.company || "Company").replace(/[^a-zA-Z0-9]/g, "_");
       const safeRole = (app.job_title || "Role").replace(/[^a-zA-Z0-9]/g, "_");
       const filename = activeDocType === "cv"
-        ? `Tailored_CV_${safeCompany}_${safeRole}.pdf`
+        ? `CV_${safeRole}.pdf`
         : `Cover_Letter_${safeCompany}_${safeRole}.pdf`;
 
       const downloadUrl = URL.createObjectURL(blob);
@@ -851,7 +851,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const safeCompany = (app.company || "Company").replace(/[^a-zA-Z0-9]/g, "_");
     const safeRole = (app.job_title || "Role").replace(/[^a-zA-Z0-9]/g, "_");
     const filename = activeDocType === "cv"
-      ? `Tailored_CV_${safeCompany}_${safeRole}.txt`
+      ? `CV_${safeRole}.txt`
       : `Cover_Letter_${safeCompany}_${safeRole}.txt`;
 
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });

@@ -378,13 +378,76 @@ Return ONLY a valid JSON array of objects with the exact format:
     return score_jobs_heuristic(cv_profile, jobs)
 
 
+def extract_contact_line(lines: List[str]) -> str:
+    """Extracts clean location, email, phone, and LinkedIn info from candidate CV header lines."""
+    contact_items = []
+    for l in lines[1:6]:
+        clean = l.replace("#", "").strip()
+        if clean.isupper() or len(clean) > 130 or len(clean) < 5:
+            continue
+        if any(w in clean.lower() for w in ["summary", "profile", "experienced", "engineer with", "manager with", "results-driven"]):
+            continue
+        if any(marker in clean.lower() for marker in ["@", "+44", "+", "linkedin.com", "github.com", "tel:", "phone:"]) or (
+            any(loc in clean.lower() for loc in ["london", "manchester", "birmingham", "leeds", "uk", "united kingdom", "remote"]) and ("|" in clean or "," in clean)
+        ):
+            contact_items.append(clean)
+    return "  •  ".join(contact_items) if contact_items else "United Kingdom"
+
+
+def parse_and_clean_cv_experience(cv_text: str) -> Dict[str, str]:
+    """
+    Parses original CV text into clean experience and education sections.
+    Preserves all real roles, past employers, dates, and bullet points.
+    """
+    lines = [l.strip() for l in cv_text.splitlines() if l.strip()]
+    experience_lines = []
+    education_lines = []
+    current_sec = "other"
+
+    for line in lines:
+        clean_upper = line.replace("#", "").strip().upper()
+        if any(h in clean_upper for h in ["EXPERIENCE", "WORK HISTORY", "EMPLOYMENT HISTORY", "CAREER HISTORY"]):
+            current_sec = "experience"
+            continue
+        elif any(h in clean_upper for h in ["EDUCATION", "CERTIFICATIONS", "QUALIFICATIONS", "ACADEMIC BACKGROUND"]):
+            current_sec = "education"
+            continue
+        elif any(h in clean_upper for h in ["SUMMARY", "PROFILE", "CORE SKILLS", "TECHNICAL SKILLS"]):
+            current_sec = "other"
+            continue
+
+        if current_sec == "experience":
+            if "|" in line and not line.startswith("-") and not line.startswith("*") and not line.startswith("•"):
+                experience_lines.append(f"### {line}")
+            elif re.search(r"\b(19\d\d|20\d\d)\b", line) and ("-" in line or "–" in line or "present" in line.lower()) and not line.startswith("-") and not line.startswith("•"):
+                experience_lines.append(f"*{line}*")
+            else:
+                experience_lines.append(line)
+        elif current_sec == "education":
+            education_lines.append(line)
+
+    if not experience_lines:
+        experience_lines = [l for l in lines[10:] if not any(w in l.lower() for w in ["education", "certification", "degree"])]
+    if not education_lines:
+        education_lines = [
+            "- Relevant Professional Qualifications & Industry Certifications aligned with UK standards."
+        ]
+
+    return {
+        "experience": "\n".join(experience_lines),
+        "education": "\n".join(education_lines)
+    }
+
+
 def tailor_single_job_fallback(cv_text: str, job: Dict[str, Any]) -> Dict[str, Any]:
     """
     Deterministic fallback generator for an individual job specification.
-    Produces a dedicated tailored CV and a deeply spec-focused cover letter citing exact required skills.
+    Produces a submission-ready, executive UK CV (with ZERO references to the prospective employer)
+    and a bespoke, spec-focused cover letter citing exact required skills.
     """
     lines = [l.strip() for l in cv_text.splitlines() if l.strip()]
     name = lines[0] if lines else "Candidate Name"
+    name = name.replace("#", "").strip()
     if "|" in name:
         name = name.split("|")[0].strip()
 
@@ -393,47 +456,50 @@ def tailor_single_job_fallback(cv_text: str, job: Dict[str, Any]) -> Dict[str, A
     location = job.get("location", "United Kingdom")
     salary = job.get("salary", "Competitive")
     tags = job.get("tags", [])
-    
-    # Extract tags or description keywords
+
     if not tags:
         tags = ["Service Delivery", "Operations Management", "Stakeholder Leadership"]
-    
+
     tags_str = ", ".join(tags[:6])
     primary_skills = ", ".join(tags[:3])
 
-    # 1. Spec-Tailored CV
+    contact_line = extract_contact_line(lines)
+    parsed_sections = parse_and_clean_cv_experience(cv_text)
+
+    # 1. Spec-Tailored CV (100% Submission Ready, ZERO prospective company mentions)
     tailored_cv = f"""# {name}
-**Target Role: {title}  |  {company}**
-*{location}  •  {salary}*
+**{title}**
+{contact_line}
 
 ---
 
 ## PROFESSIONAL SUMMARY
-Results-driven senior professional with extensive experience tailored specifically for the **{title}** position at **{company}**. Proven track record delivering operational excellence, robust governance, and technical alignment across mission-critical environments. Brings deep expertise in **{tags_str}**, with a demonstrated ability to optimize service workflows, manage complex multi-vendor delivery, and exceed organizational SLA commitments for {company}.
+Accomplished, results-oriented **{title}** with an established track record of delivering operational excellence, strategic governance, and technical alignment across mission-critical enterprise environments. Brings deep expertise across **{tags_str}**, with a demonstrated ability to optimize complex workflows, drive continual service improvement, and achieve outstanding SLA reliability. Skilled at collaborating with cross-functional leadership, steering multi-stakeholder initiatives, and translating strategic business priorities into robust, high-availability operational execution.
 
 ---
 
-## TARGETED CORE COMPETENCIES FOR {title.upper()}
-- **Priority Requirements for {company}:** {tags_str}
-- **Governance & Operations:** ITIL Practices, SLA/OLA Management, Incident & Problem Resolution, CAB Leadership
-- **Delivery & Architecture:** Vendor Management, Service Transition, Continuous Improvement, Risk Mitigation
+## CORE COMPETENCIES & TECHNICAL EXPERTISE
+- **Role Specialisms & Target Competencies:** {tags_str}
+- **Operational Governance & Reliability:** ITIL Framework, SLA/OLA Delivery, Incident & Problem Resolution, Root Cause Analysis, Change Advisory Board (CAB)
+- **Technical Architecture & Systems:** Cloud Infrastructure, System Reliability, Process Automation, System Monitoring, Risk Mitigation
+- **Leadership & Stakeholder Alignment:** Vendor & Contract Management, Multi-Vendor Governance, Continual Service Improvement (CSI), Cross-Functional Leadership
 
 ---
 
-## PROFESSIONAL WORK HISTORY
-*(Optimized and aligned with {company} {title} specifications)*
+## PROFESSIONAL EXPERIENCE
 
-{cv_text}
+{parsed_sections['experience']}
 
 ---
 
-## EDUCATION & PROFESSIONAL CREDENTIALS
-- Relevant Professional Certifications and Academic Qualifications aligned with UK industry standards.
+## EDUCATION & PROFESSIONAL CERTIFICATIONS
+
+{parsed_sections['education']}
 """
 
-    # 2. Spec-Focused Cover Letter
+    # 2. Spec-Focused Cover Letter (Specifically citing and addressing the hiring team at the company)
     cover_letter = f"""{name}
-United Kingdom
+{contact_line.split('•')[0].strip() if '•' in contact_line else 'United Kingdom'}
 
 Date: {job.get('posted_date') or 'Current Application'}
 
@@ -445,7 +511,7 @@ Subject: Application for {title} - {name}
 
 Dear Hiring Team at {company},
 
-I am writing to express my enthusiastic interest in the {title} vacancy at {company}. Having thoroughly examined your job specification, I was particularly drawn to your emphasis on {tags_str}. With a proven career founded on disciplined execution and service excellence, I am confident that my background directly aligns with the operational priorities and challenges of this role.
+I am writing to express my enthusiastic interest in the {title} vacancy at {company}. Having thoroughly reviewed your job specification, I was particularly drawn to your emphasis on {tags_str}. With a proven career founded on disciplined execution, stakeholder alignment, and operational excellence, I am confident that my background directly addresses the priorities and challenges of this role.
 
 In reviewing your requirements, I noted the critical need for hands-on leadership in {primary_skills}. Throughout my commercial experience, I have spearheaded initiatives that demanded these exact competencies—establishing robust governance models, resolving complex operational bottlenecks, and ensuring multi-stakeholder SLA compliance. My background in orchestrating cross-functional teams and managing enterprise-grade service delivery equips me to immediately contribute to {company}'s ongoing success.
 
@@ -459,10 +525,10 @@ Yours sincerely,
 """
 
     key_amendments = [
-        f"Realigned Professional Summary specifically for {title} at {company}.",
-        f"Promoted required competencies ({tags_str}) to the top of Core Skills.",
-        f"Reframed achievements to focus on governance, SLAs, and technical requirements matching {company}.",
-        f"Drafted bespoke UK cover letter directly addressing the {title} specification."
+        f"Re-aligned Professional Summary and headline specifically for the {title} domain.",
+        f"Elevated target competencies ({tags_str}) to the top of Core Competencies.",
+        f"Structured experience to highlight governance, SLAs, and technical requirements matching {title}.",
+        f"Drafted bespoke UK cover letter directly addressing {company}'s {title} specification."
     ]
 
     return {
@@ -478,6 +544,7 @@ Yours sincerely,
     }
 
 
+
 def tailor_single_job_gemini(
     cv_text: str,
     job: Dict[str, Any],
@@ -486,6 +553,7 @@ def tailor_single_job_gemini(
     """
     Uses Gemini LLM Agent to tailor a CV and generate a bespoke, spec-focused cover letter
     for a single job specification.
+    Strictly forbids prospective employer mentions in the CV body and header.
     """
     title = job.get("title", "Target Role")
     company = job.get("company", "Target Company")
@@ -494,8 +562,67 @@ def tailor_single_job_gemini(
     tags = job.get("tags", [])
     desc = job.get("description", "")[:1200]
 
-    prompt = f"""You are an elite UK Executive Career Consultant, ATS Specialist, and Professional Resume Writer.
-Tailor the candidate's CV specifically for this SINGLE UK job vacancy, and generate a bespoke, spec-focused UK cover letter.
+    prompt = f"""You are an elite UK Executive Career Consultant, ATS Optimization Specialist, and Senior Recruitment Director.
+Your task is to tailor the candidate's CV specifically for the role of "{title}".
+You will also write a bespoke, spec-focused UK cover letter for the hiring team at "{company}".
+
+CRITICAL INSTRUCTIONS FOR CV ("tailored_cv"):
+1. STRICTLY NO MENTION OF THE PROSPECTIVE COMPANY ("{company}") IN THE CV:
+   - A professional CV is an independent personal career document.
+   - It must NEVER mention "{company}", "applying to {company}", or "tailored for {company}" anywhere in the text, header, summary, or bullets.
+   - The prospective company name "{company}" belongs EXCLUSIVELY in the Cover Letter.
+2. PROFESSIONAL ROLE ALIGNMENT:
+   - Set the candidate's header headline to "{title}" (or matching seniority/domain).
+   - This positions the candidate directly as a qualified, experienced specialist in this field.
+3. EXECUTIVE PROFESSIONAL SUMMARY:
+   - Craft a compelling, punchy 3-4 sentence professional summary highlighting their total years of experience, core domain authority, and proven track record delivering the exact outcomes required by a {title}.
+   - Seamlessly weave in the primary methodologies, technologies, and governance standards requested in the job description ({', '.join(tags)}) without referencing any prospective employer name.
+4. CATEGORIZED CORE COMPETENCIES:
+   - Reorganize and elevate skills so that the specific skills requested in the job specification ({', '.join(tags)}) are front and center in categorized, bulleted groups (e.g., Core Specialisms, Technical & Tools, Leadership & Governance).
+5. REFINED WORK EXPERIENCE:
+   - Re-frame and elevate the candidate's actual work history achievements using strong executive action verbs (e.g., Spearheaded, Architected, Orchestrated, Optimized, Delivered, Championed).
+   - Draw attention to achievements, metrics (%, £, SLAs, latency, scale), and tools that prove candidate competence in the job's key requirements.
+   - Keep all past employer names, past job titles, and dates 100% factually aligned with the candidate's real CV.
+   - Format each role cleanly with:
+     ### Job Title | Company Name | Location
+     *Date Range*
+     - Action-oriented bullet point with quantifiable impact
+6. READY-TO-SUBMIT FORMAT:
+   - Output clean, professional Markdown that can immediately be exported to PDF or submitted directly to an ATS.
+   - Standard UK sections:
+     # [Candidate Name]
+     **{title}**
+     [Location] | [Email] | [Phone] | [LinkedIn]
+     
+     ---
+     ## PROFESSIONAL SUMMARY
+     [3-4 sentences of executive positioning]
+     
+     ---
+     ## CORE COMPETENCIES & TECHNICAL EXPERTISE
+     - **[Category 1 (Spec Focus)]:** [Skills requested in spec]
+     - **[Category 2]:** [Technical skills / Tools]
+     - **[Category 3]:** [Governance, Delivery, Leadership]
+     
+     ---
+     ## PROFESSIONAL EXPERIENCE
+     ### [Job Title] | [Past Company] | [Location]
+     *[Start Date] – [End Date]*
+     - [Quantified achievement bullet point]
+     ...
+     
+     ---
+     ## EDUCATION & CERTIFICATIONS
+     - [Degrees, certifications, etc.]
+
+CRITICAL INSTRUCTIONS FOR COVER LETTER ("cover_letter"):
+- The cover letter IS where {company} and {title} are explicitly addressed.
+- Address formally to "Hiring Team at {company}".
+- Paragraph 1: Enthusiastic opening specifying application for {title} at {company}.
+- Paragraph 2: Direct evidence of candidate's commercial achievements in the specific technical and operational skills requested ({', '.join(tags)}).
+- Paragraph 3: Connect candidate's proven methodologies to the responsibilities and challenges described in the job spec.
+- Paragraph 4: Formal, confident closing and call to interview.
+- Sign off: "Yours sincerely,\n[Candidate Name]".
 
 TARGET JOB SPECIFICATION:
 - Title: {title}
@@ -513,31 +640,16 @@ CANDIDATE ORIGINAL CV:
 {cv_text[:6000]}
 \"\"\"
 
-DELIVERABLES:
-1. target_skills_highlighted: List of 4-8 specific skills, platforms, and methodologies from this job spec that you elevated in the CV.
-2. key_amendments: List of 3-4 bullet points detailing how the CV was customized for {company} (e.g. elevated required tools, re-aligned summary, quantified relevant metrics).
-3. tailored_cv: A comprehensive, beautifully structured Markdown CV tailored exclusively for {title} at {company}.
-   - Professional Summary must be written specifically for {company}, highlighting how the candidate's career prepares them for this exact role.
-   - Core Competencies must feature the exact skills requested in the job spec at the top.
-   - Work Experience must emphasize accomplishments and tools matching this job description.
-   - Factual accuracy must be preserved (do not invent fake degrees or employers).
-4. cover_letter: A bespoke, formal UK business cover letter addressed to the Hiring Team at {company}.
-   - MUST explicitly cite and focus on the skills requested in the job spec ({', '.join(tags)}).
-   - Paragraph 1: Enthusiastic opening specifying {title} at {company}.
-   - Paragraph 2: Direct evidence of candidate's achievements in the required technical/operational skills from this spec.
-   - Paragraph 3: Direct alignment with the responsibilities and challenges described in the job spec.
-   - Paragraph 4: Formal, confident UK business closing and call to action.
-
 Return ONLY a valid JSON object with this exact structure:
 {{
   "target_skills_highlighted": ["Skill1", "Skill2", "Skill3"],
   "key_amendments": [
-    "Realigned executive summary specifically for {title} at {company}",
+    "Realigned Professional Summary and headline specifically for the {title} domain",
     "Elevated [Key Tool] and [Key Skill] to top of Core Competencies",
-    "Highlighted quantifiable achievements in [Area] to match job requirements"
+    "Quantified achievements in [Area] to showcase relevant scale and impact"
   ],
-  "tailored_cv": "# Candidate Name\\n\\n**Target Role: {title} | {company}**\\n...",
-  "cover_letter": "Full text of the spec-focused cover letter..."
+  "tailored_cv": "# Full Name\\n**{title}**\\n...",
+  "cover_letter": "Dear Hiring Team at {company}..."
 }}"""
 
     for model_name in [PRIMARY_MODEL, FALLBACK_MODEL]:
@@ -552,6 +664,29 @@ Return ONLY a valid JSON object with this exact structure:
             )
             data = json.loads(response.text)
             logger.info(f"Successfully tailored application for {company} using {model_name}.")
+
+            raw_cv = data.get("tailored_cv", "").strip()
+
+            # Safety post-processing: remove prospective company from CV header if accidentally present
+            sanitized_cv = re.sub(
+                rf"\*\*(?:Target Role:)?\s*{re.escape(title)}\s*\|\s*{re.escape(company)}\*\*",
+                f"**{title}**",
+                raw_cv,
+                flags=re.IGNORECASE
+            )
+            sanitized_cv = re.sub(
+                rf"\b(?:specifically tailored for|specifically for|tailored specifically for)\s+(?:the\s+)?(?:position\s+at\s+)?{re.escape(company)}\b",
+                "for this role",
+                sanitized_cv,
+                flags=re.IGNORECASE
+            )
+            sanitized_cv = re.sub(
+                rf"\b(?:exceed organizational SLA commitments for|contribute to)\s+{re.escape(company)}\b",
+                "exceed organizational SLA commitments",
+                sanitized_cv,
+                flags=re.IGNORECASE
+            )
+
             return {
                 "job_id": job.get("id", f"job-{title}"),
                 "job_title": title,
@@ -560,7 +695,7 @@ Return ONLY a valid JSON object with this exact structure:
                 "salary": salary,
                 "target_skills_highlighted": data.get("target_skills_highlighted", tags[:6]),
                 "key_amendments": data.get("key_amendments", []),
-                "tailored_cv": data.get("tailored_cv", "").strip(),
+                "tailored_cv": sanitized_cv,
                 "cover_letter": data.get("cover_letter", "").strip()
             }
         except Exception as e:
