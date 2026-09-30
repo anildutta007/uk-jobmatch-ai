@@ -38,6 +38,13 @@ venv.bak/
 .vscode/
 .idea/
 .DS_Store
+
+# Separate Projects
+uk-funds-advisor/
+run_funds_advisor.bat
+smart-fridge-planner/
+run_fridge_planner.bat
+
 Thumbs.db
 *.swp
 
