@@ -44,6 +44,9 @@ uk-funds-advisor/
 run_funds_advisor.bat
 smart-fridge-planner/
 run_fridge_planner.bat
+uk-student-loan-calculator/
+run_loan_calculator.bat
+
 
 Thumbs.db
 *.swp
