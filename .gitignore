@@ -48,6 +48,18 @@ uk-student-loan-calculator/
 run_loan_calculator.bat
 anil-portal/
 run_portal.bat
+uk-stock-picker/
+run_stock_picker.bat
+interval-reminder-app/
+run_reminder.bat
+uk-landlord-licensing/
+seep-game/
+run_seep_game.bat
+push_seep.bat
+zodiac-compatibility/
+run_zodiac_compatibility.bat
+push_zodiac.bat
+
 
 
 Thumbs.db
