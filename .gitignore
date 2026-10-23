@@ -59,6 +59,24 @@ push_seep.bat
 zodiac-compatibility/
 run_zodiac_compatibility.bat
 push_zodiac.bat
+trip-expense-splitter/
+run_trip_splitter.bat
+push_trip_splitter.bat
+uk-passive-tracker-indexes/
+run_passive_trackers.bat
+push_passive_trackers.bat
+magazine-share-tracker/
+run_magazine_tracker.bat
+push_magazine_tracker.bat
+travel-globe-planner/
+run_travel_planner.bat
+push_travel_planner.bat
+uk-regional-insights/
+run_uk_regional_insights.bat
+push_uk_regional_insights.bat
+ai-exercise-coach/
+run_ai_exercise_coach.bat
+push_ai_exercise_coach.bat
 
 
 
